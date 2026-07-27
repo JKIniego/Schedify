@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import Svg, { Ellipse, Path } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from 'expo-router';
 
 const NAVY = "#14213D";
 const GOLD = "#C9A227";
@@ -131,7 +132,12 @@ const features = [
 export default function Index() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const { width } = useWindowDimensions();
+  const router = useRouter();
   const wide = width >= 700;
+  
+  const handleLogin = () => {
+    router.push('/dashboard');
+  }
 
   return (
     <View className="flex-1 bg-white">
@@ -300,7 +306,11 @@ export default function Index() {
               />
             </View>
 
-            <Pressable style={{ backgroundColor: NAVY }} className="rounded-lg py-3.5 items-center">
+            <Pressable
+              style={{ backgroundColor: NAVY }}
+              className="rounded-lg py-3.5 items-center"
+              onPress={() => { mode === "login" ? handleLogin() : '' }}
+            >
               <Text style={{ color: "white" }} className="text-sm font-bold">
                 {mode === "login" ? "Log in" : "Create account"}
               </Text>
