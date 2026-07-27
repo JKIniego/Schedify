@@ -128,7 +128,7 @@ export default function Index() {
   const formPositionRef = useRef(0);
   
   const handleLogin = () => {
-    router.push('/dashboard');
+    router.replace('/dashboard')
   }
 
   const scrollToForm = (targetMode: "login" | "register") => {
