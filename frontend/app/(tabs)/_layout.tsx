@@ -1,8 +1,13 @@
 import { Tabs, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabsLayout() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  
+  const bottomInset = Math.max(insets.bottom, 8);
+  const tabHeight = 56 + bottomInset;
 
   return (
     <Tabs
@@ -13,15 +18,14 @@ export default function TabsLayout() {
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",
-          marginTop: -4,
-          paddingBottom: 4,
+          marginTop: -2,
         },
         tabBarStyle: {
-          height: 64,
+          height: tabHeight,
           backgroundColor: "#FFFFFF",
           borderTopColor: "#E4E1D8",
-          paddingBottom: 8,
-          paddingTop: 8,
+          paddingTop: 6,
+          paddingBottom: bottomInset,
         },
       }}
     >
