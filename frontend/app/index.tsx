@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import Svg, { Ellipse, Path } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
@@ -134,14 +134,27 @@ export default function Index() {
   const { width } = useWindowDimensions();
   const router = useRouter();
   const wide = width >= 700;
+  const scrollViewRef = useRef<ScrollView>(null);
+  const formPositionRef = useRef(0);
   
   const handleLogin = () => {
     router.push('/dashboard');
   }
 
+  const scrollToForm = (targetMode: "login" | "register") => {
+    setMode(targetMode);
+    if (scrollViewRef.current && formPositionRef.current > 0) {
+      scrollViewRef.current.scrollTo({
+        y: formPositionRef.current - 50,
+        animated: true,
+      });
+    }
+  };
+
   return (
     <View className="flex-1 bg-white">
       <ScrollView
+        ref={scrollViewRef}
         className="flex-1"
         contentContainerStyle={{ alignItems: "center", paddingTop: 64, paddingBottom: 56 }}
         showsVerticalScrollIndicator={false}
@@ -190,12 +203,12 @@ export default function Index() {
           <WeekPreview />
 
           <View className="mt-10">
-            <Pressable style={{ backgroundColor: NAVY }} className="rounded-md py-3.5 items-center">
+            <Pressable style={{ backgroundColor: NAVY }} className="rounded-md py-3.5 items-center" onPress={() => scrollToForm("register")}>
               <Text style={{ color: "white", letterSpacing: 0.5 }} className="text-sm font-bold">
                 Get Started
               </Text>
             </Pressable>
-            <Pressable className="items-center mt-4">
+            <Pressable className="items-center mt-4" onPress={() => scrollToForm("login")}>
               <Text style={{ color: SLATE }} className="text-sm">
                 Already enrolled?{" "}
                 <Text style={{ color: CRIMSON }} className="font-semibold">
@@ -245,7 +258,7 @@ export default function Index() {
 
           <Divider />
 
-          <View style={{ borderColor: HAIR, borderWidth: 1 }} className="bg-white rounded-xl p-5">
+          <View style={{ borderColor: HAIR, borderWidth: 1 }} className="bg-white rounded-xl p-5" onLayout={(event) => { formPositionRef.current = event.nativeEvent.layout.y; }}>
             <View style={{ backgroundColor: "#F3F1EA" }} className="flex-row rounded-full p-1 mb-5">
               <Pressable
                 onPress={() => setMode("login")}
