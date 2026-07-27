@@ -3,6 +3,8 @@ import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } fro
 import Svg, { Ellipse, Path } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 
 const DAYS = ["M", "T", "W", "T", "F"];
 
@@ -140,11 +142,13 @@ export default function Index() {
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white">
+      <StatusBar style="dark" />
+
       <ScrollView
         ref={scrollViewRef}
         className="flex-1"
-        contentContainerStyle={{ alignItems: "center", paddingTop: 64, paddingBottom: 56 }}
+        contentContainerStyle={{ alignItems: "center", paddingTop: 24, paddingBottom: 56 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
@@ -310,6 +314,6 @@ export default function Index() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 
 const CLASS_SCHEDULES = [
@@ -40,13 +41,16 @@ export default function Index() {
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white">
+      <StatusBar style="dark" />
+
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ alignItems: "center", paddingTop: 56, paddingBottom: 56 }}
+        contentContainerStyle={{ alignItems: "center", paddingTop: 24, paddingBottom: 56 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
+          {/* Header Bar */}
           <View className="flex-row items-center justify-between mb-8">
             <View className="flex-row items-center gap-2.5">
               <View className="w-9 h-9 rounded-md items-center justify-center border-[1.5px] border-brand-navy">
@@ -62,7 +66,7 @@ export default function Index() {
               </Text>
             </View>
           </View>
-          
+
           <View className="flex-row items-center justify-between mb-8">
             <Text className="text-brand-navy text-[28px] leading-[34px] font-extrabold">
               Dashboard
@@ -70,18 +74,16 @@ export default function Index() {
 
             <Pressable className="bg-brand-navy rounded-xl py-2.5 px-3.5 flex-row items-center gap-1.5 active:opacity-90">
               <Feather name="plus-circle" size={15} color="white" />
-              <Text className="text-white text-xs font-bold">
-                Create Sched
-              </Text>
+              <Text className="text-white text-xs font-bold">Create Sched</Text>
             </Pressable>
           </View>
-          
+
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-brand-navy text-xs font-extrabold uppercase tracking-widest">
               Saved Schedules
             </Text>
           </View>
-          
+
           <View className="gap-3.5">
             {schedules.map((item) => (
               <View
@@ -101,7 +103,7 @@ export default function Index() {
                     </View>
                   )}
                 </View>
-                
+
                 <View className="flex-row items-center gap-1.5 mb-3">
                   <Feather name="clock" size={12} color="#5B6472" />
                   <Text className="text-xs text-brand-slate font-medium">
@@ -110,14 +112,14 @@ export default function Index() {
                 </View>
 
                 <View className="h-[1px] bg-brand-hair mb-3" />
-                
+
                 <View className="flex-row items-center justify-end gap-2">
                   <Pressable className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50">
                     <Feather name="edit-2" size={13} color="#14213D" />
                     <Text className="text-xs text-brand-navy font-semibold">Edit</Text>
                   </Pressable>
 
-                  <Pressable 
+                  <Pressable
                     className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-red-50"
                     onPress={() => handleDelete(item.id)}
                   >
@@ -130,6 +132,6 @@ export default function Index() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
