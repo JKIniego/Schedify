@@ -1,10 +1,14 @@
 import { useState, useRef } from "react";
-import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View, ActivityIndicator } from "react-native";
 import Svg, { Ellipse, Path } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
+
+const API_BASE = 'http://localhost:8000/api/accounts';
 
 const DAYS = ["M", "T", "W", "T", "F"];
 
@@ -121,18 +125,66 @@ const features = [
 
 export default function Index() {
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const { width } = useWindowDimensions();
   const router = useRouter();
   const wide = width >= 700;
   const scrollViewRef = useRef<ScrollView>(null);
   const formPositionRef = useRef(0);
-  
-  const handleLogin = () => {
-    router.replace('/dashboard')
-  }
+
+  const handleSubmit = async () => {
+    setErrorMsg(null);
+    if (!email || !password) {
+      setErrorMsg("Please fill in all fields.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const endpoint = mode === "login" ? `${API_BASE}/login/` : `${API_BASE}/register/`;
+      const payload =
+        mode === "login"
+          ? { username: email, password }
+          : { username: name || email, email, password };
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await storage.setItem("access_token", data.access);
+        await storage.setItem("refresh_token", data.refresh);
+
+        router.replace("/dashboard");
+      } else {
+        const firstError = Object.values(data)[0];
+        setErrorMsg(Array.isArray(firstError) ? firstError[0] : "Authentication failed.");
+      }
+    } catch (err) {
+      const storedToken = await storage.getItem("access_token");
+      if (storedToken) {
+        router.replace("/dashboard");
+      } else {
+        setErrorMsg("Unable to connect to server. Check your connection.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const scrollToForm = (targetMode: "login" | "register") => {
     setMode(targetMode);
+    setErrorMsg(null);
     if (scrollViewRef.current && formPositionRef.current > 0) {
       scrollViewRef.current.scrollTo({
         y: formPositionRef.current - 50,
@@ -246,7 +298,7 @@ export default function Index() {
           >
             <View className="bg-[#F3F1EA] flex-row rounded-full p-1 mb-5">
               <Pressable
-                onPress={() => setMode("login")}
+                onPress={() => { setMode("login"); setErrorMsg(null); }}
                 className={`flex-1 py-2 rounded-full items-center ${mode === "login" ? "bg-brand-navy" : "bg-transparent"}`}
               >
                 <Text className={`text-sm font-semibold ${mode === "login" ? "text-white" : "text-brand-slate"}`}>
@@ -254,7 +306,7 @@ export default function Index() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => setMode("register")}
+                onPress={() => { setMode("register"); setErrorMsg(null); }}
                 className={`flex-1 py-2 rounded-full items-center ${mode === "register" ? "bg-brand-navy" : "bg-transparent"}`}
               >
                 <Text className={`text-sm font-semibold ${mode === "register" ? "text-white" : "text-brand-slate"}`}>
@@ -263,12 +315,20 @@ export default function Index() {
               </Pressable>
             </View>
 
+            {errorMsg && (
+              <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <Text className="text-red-600 text-xs text-center font-medium">{errorMsg}</Text>
+              </View>
+            )}
+
             {mode === "register" && (
               <View className="mb-3">
                 <Text className="text-brand-slate text-sm font-medium mb-1.5 ml-1">
                   Name
                 </Text>
                 <TextInput
+                  value={name}
+                  onChangeText={setName}
                   placeholder="Juan Dela Cruz"
                   placeholderTextColor="#A8ADB8"
                   className="border border-brand-hair text-brand-navy rounded-lg px-4 py-3 text-sm bg-white"
@@ -281,6 +341,10 @@ export default function Index() {
                 Email
               </Text>
               <TextInput
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
                 placeholder="you@example.com"
                 placeholderTextColor="#A8ADB8"
                 className="border border-brand-hair text-brand-navy rounded-lg px-4 py-3 text-sm bg-white"
@@ -292,6 +356,8 @@ export default function Index() {
                 Password
               </Text>
               <TextInput
+                value={password}
+                onChangeText={setPassword}
                 placeholder="••••••••"
                 placeholderTextColor="#A8ADB8"
                 secureTextEntry
@@ -300,12 +366,17 @@ export default function Index() {
             </View>
 
             <Pressable
-              className="bg-brand-navy rounded-lg py-3.5 items-center"
-              onPress={() => { mode === "login" ? handleLogin() : '' }}
+              disabled={loading}
+              className="bg-brand-navy rounded-lg py-3.5 items-center justify-center"
+              onPress={handleSubmit}
             >
-              <Text className="text-white text-sm font-bold">
-                {mode === "login" ? "Log in" : "Create account"}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text className="text-white text-sm font-bold">
+                  {mode === "login" ? "Log in" : "Create account"}
+                </Text>
+              )}
             </Pressable>
           </View>
 
