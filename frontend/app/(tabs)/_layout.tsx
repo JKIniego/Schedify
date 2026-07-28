@@ -52,6 +52,18 @@ export default function TabsLayout() {
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarLabel: "Profile",
+          tabBarActiveTintColor: "#14213D",
+          tabBarInactiveTintColor: "#5B6472",
+          tabBarIcon: ({ color }) => (
+            <Feather name="user" size={20} color={color} />
+          ),
+        }}
+      />
       
       <Tabs.Screen
         name="logout"
