@@ -39,6 +39,7 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 INSTALLED_APPS = [
     'accounts',
     'core',
+    'schedify',
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
