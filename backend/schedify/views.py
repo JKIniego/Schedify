@@ -57,5 +57,18 @@ class ClassScheduleDetailView(APIView):
         schedule = self.get_object(pk, request.user)
         if not schedule:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        was_active = schedule.is_active
         schedule.delete()
+        
+        if was_active:
+            latest_schedule = (
+                ClassSchedule.objects.filter(user=request.user)
+                .order_by('-created_at')
+                .first()
+            )
+            if latest_schedule:
+                latest_schedule.is_active = True
+                latest_schedule.save()
+
         return Response(status=status.HTTP_204_NO_CONTENT)

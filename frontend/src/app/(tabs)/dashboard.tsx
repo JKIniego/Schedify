@@ -192,6 +192,8 @@ export default function Dashboard() {
           showAlert("Delete Failed", error);
           setSchedules(previousSchedules);
         }
+
+        fetchSchedules();
       },
       "Delete"
     );
