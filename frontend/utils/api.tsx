@@ -8,7 +8,7 @@ const getBaseUrl = () => {
   }
   
   if (Platform.OS === "android" && !Constants.isDevice) {
-    return "http://10.0.2.2:8000/api";
+    return "http://${process.env.EXPO_PUBLIC_ANDROID_IP}:8000/api";
   }
   
   if (Platform.OS === "ios" && !Constants.isDevice) {
