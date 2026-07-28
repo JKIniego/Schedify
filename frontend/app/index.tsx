@@ -148,10 +148,7 @@ export default function Index() {
 
     try {
       const endpoint = mode === "login" ? `${API_BASE}/login/` : `${API_BASE}/register/`;
-      const payload =
-        mode === "login"
-          ? { username: email, password }
-          : { username: name || email, email, password };
+      const payload = mode === "login" ? { username: email,password } : { username: email, email: email, password };
 
       const response = await fetch(endpoint, {
         method: "POST",
