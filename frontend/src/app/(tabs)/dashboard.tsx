@@ -295,12 +295,19 @@ export default function Dashboard() {
                   <View className="h-[1px] bg-brand-hair mb-3" />
 
                   <View className="flex-row items-center justify-end gap-2">
-                    {item.is_active && (
+                    {item.is_active ? (
                       <Pressable
                         className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50"
                       >
                         <Feather name="eye" size={13} color="#14213D" />
                         <Text className="text-xs text-brand-navy font-semibold">View</Text>
+                      </Pressable>
+                    ) : (
+                      <Pressable
+                        className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50"
+                      >
+                        <Feather name="star" size={13} color="#14213D" />
+                        <Text className="text-xs text-brand-navy font-semibold">Set as Active</Text>
                       </Pressable>
                     )}
                     <Pressable
