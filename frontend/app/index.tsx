@@ -6,9 +6,8 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SecureStore from 'expo-secure-store';
-import { storage } from '../utils/storage';
-
-const API_BASE = 'http://localhost:8000/api/accounts';
+import { auth } from "../utils/auth";
+import { storage } from "../utils/storage";
 
 const DAYS = ["M", "T", "W", "T", "F"];
 
@@ -139,6 +138,7 @@ export default function Index() {
 
   const handleSubmit = async () => {
     setErrorMsg(null);
+
     if (!email || !password) {
       setErrorMsg("Please fill in all fields.");
       return;
@@ -147,26 +147,33 @@ export default function Index() {
     setLoading(true);
 
     try {
-      const endpoint = mode === "login" ? `${API_BASE}/login/` : `${API_BASE}/register/`;
-      const payload = mode === "login" ? { username: email, password } : { username: email, email: email, password };
+      let result;
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      if (mode === "login") {
+        result = await auth.login(email, password);
+      } else {
+        result = await auth.register({
+          username: name || email,
+          email,
+          password,
+        });
+      }
 
-      const data = await response.json();
+      const { data, error, status } = result;
 
-      if (response.ok) {
+      if (data?.access && data?.refresh) {
         await storage.setItem("access_token", data.access);
         await storage.setItem("refresh_token", data.refresh);
-
         router.replace("/dashboard");
-      } else {
-        const firstError = Object.values(data)[0];
-        setErrorMsg(Array.isArray(firstError) ? firstError[0] : "Authentication failed.");
+        return;
       }
+      
+      if (error) {
+        setErrorMsg(error);
+        return;
+      }
+      
+      setErrorMsg("Authentication failed. Please try again.");
     } catch (err) {
       const storedToken = await storage.getItem("access_token");
       if (storedToken) {
