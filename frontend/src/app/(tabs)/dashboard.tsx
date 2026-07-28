@@ -84,6 +84,7 @@ export default function Dashboard() {
   };
 
   const fetchSchedules = useCallback(async () => {
+    setLoading(true);
     const { data, error } = await apiRequest<ClassSchedule[]>("/classes/");
 
     if (error) {
