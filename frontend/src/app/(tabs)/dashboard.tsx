@@ -31,6 +31,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
+  const [addModal, setAddModal] = useState<boolean>(false);
+
   const [newTitle, setNewTitle] = useState<string>("");
   const [isCreating, setIsCreating] = useState<boolean>(false);
   
@@ -82,6 +84,7 @@ export default function Dashboard() {
     if (error) {
       Alert.alert("Create Failed", error);
     } else if (data) {
+      setAddModal(false)
       setNewTitle("");
       fetchSchedules();
     }
@@ -120,6 +123,7 @@ export default function Dashboard() {
 
             <Pressable
               className="bg-brand-navy rounded-xl py-2.5 px-3.5 flex-row items-center gap-1.5 active:opacity-90"
+              onPress={() => setAddModal(true)}
             >
               <Feather name="plus-circle" size={15} color="white" />
               <Text className="text-white text-xs font-bold">Create Sched</Text>
@@ -192,6 +196,54 @@ export default function Dashboard() {
             </View>
           )}
         </View>
+
+        <Modal
+          visible={addModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setAddModal(false)}
+        >
+          <View className="flex-1 justify-center items-center bg-black/50 px-6">
+            <View className="w-full max-w-[400px] bg-white rounded-2xl p-6 border border-brand-hair">
+              <Text className="text-brand-navy text-xl font-bold mb-4">
+                Create New Schedule
+              </Text>
+
+              <Text className="text-brand-slate text-xs font-bold mb-1.5 uppercase">
+                Schedule Title
+              </Text>
+              <TextInput
+                className="bg-brand-card border border-brand-hair rounded-xl px-4 py-3 text-brand-navy text-sm font-medium mb-6"
+                placeholder="e.g. A.Y. 2026-2027 1st Sem"
+                placeholderTextColor="#94A3B8"
+                value={newTitle}
+                onChangeText={setNewTitle}
+                autoFocus
+              />
+
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2.5 rounded-xl border border-brand-hair bg-white active:bg-gray-50"
+                  onPress={() => setAddModal(false)}
+                >
+                  <Text className="text-brand-slate text-xs font-bold">Cancel</Text>
+                </Pressable>
+
+                <Pressable
+                  className="px-4 py-2.5 rounded-xl bg-brand-navy active:opacity-90 flex-row items-center justify-center min-w-[80px]"
+                  onPress={handleCreate}
+                  disabled={isCreating}
+                >
+                  {isCreating ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Text className="text-white text-xs font-bold">Create</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+      </Modal>
       </ScrollView>
     </SafeAreaView>
   );
