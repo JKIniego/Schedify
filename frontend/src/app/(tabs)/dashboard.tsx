@@ -40,6 +40,8 @@ export default function Dashboard() {
   const [editedTitle, setEditedTitle] = useState<string>("");
   const [editError, setEditError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  const [activatingId, setActivatingId] = useState<number | null>(null);
   
   const [alertConfig, setAlertConfig] = useState<AlertState>({
     visible: false,
@@ -200,6 +202,23 @@ export default function Dashboard() {
     );
   };
 
+  const handleSetActive = async (id: number) => {
+    setActivatingId(id);
+
+    const { error } = await apiRequest<ClassSchedule>(`/classes/${id}/`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_active: true }),
+    });
+
+    setActivatingId(null);
+
+    if (error) {
+      showAlert("Failed to set active schedule", error);
+    } else {
+      fetchSchedules();
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
@@ -305,11 +324,20 @@ export default function Dashboard() {
                     ) : (
                       <Pressable
                         className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50"
+                        onPress={() => handleSetActive(item.id)}
+                        disabled={activatingId === item.id}
                       >
-                        <Feather name="star" size={13} color="#14213D" />
-                        <Text className="text-xs text-brand-navy font-semibold">Set as Active</Text>
+                        {activatingId === item.id ? (
+                          <ActivityIndicator size="small" color="#14213D" />
+                        ) : (
+                          <>
+                            <Feather name="star" size={13} color="#14213D" />
+                            <Text className="text-xs text-brand-navy font-semibold">Set as Active</Text>
+                          </>
+                        )}
                       </Pressable>
                     )}
+
                     <Pressable
                       className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50"
                       onPress={() => openEditModal(item)}
