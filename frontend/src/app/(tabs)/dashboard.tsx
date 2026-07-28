@@ -6,7 +6,6 @@ import {
   useWindowDimensions,
   View,
   ActivityIndicator,
-  Alert,
   Modal,
   TextInput,
 } from "react-native";
@@ -14,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 import { apiRequest } from "../../utils/api";
+import { CustomAlertModal, AlertState } from "../../utils/alert";
 
 interface ClassSchedule {
   id: number;
@@ -29,48 +29,108 @@ export default function Dashboard() {
 
   const [schedules, setSchedules] = useState<ClassSchedule[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
-
+  
   const [addModal, setAddModal] = useState<boolean>(false);
-
   const [newTitle, setNewTitle] = useState<string>("");
+  const [addError, setAddError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }) + " • " + date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
+  const [editModal, setEditModal] = useState<boolean>(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<ClassSchedule | null>(null);
+  const [editedTitle, setEditedTitle] = useState<string>("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  
+  const [alertConfig, setAlertConfig] = useState<AlertState>({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  const showAlert = (title: string, message?: string) => {
+    setAlertConfig({ visible: true, title, message, type: "alert" });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    confirmText = "Delete"
+  ) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type: "confirm",
+      onConfirm,
+      confirmText,
     });
   };
-  
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return (
+      date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }) +
+      " • " +
+      date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    );
+  };
+
   const fetchSchedules = useCallback(async () => {
     const { data, error } = await apiRequest<ClassSchedule[]>("/classes/");
 
     if (error) {
-      Alert.alert("Error", error);
+      showAlert("Error", error);
     } else if (data) {
       setSchedules(data);
     }
     setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
-  
+
+  const openAddModal = () => {
+    setNewTitle("");
+    setAddError(null);
+    setAddModal(true);
+  };
+
+  const closeAddModal = () => {
+    setAddModal(false);
+    setAddError(null);
+  };
+
+  const openEditModal = (item: ClassSchedule) => {
+    setSelectedSchedule(item);
+    setEditedTitle(item.title);
+    setEditError(null);
+    setEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModal(false);
+    setSelectedSchedule(null);
+    setEditError(null);
+  };
+
   const handleCreate = async () => {
     if (!newTitle.trim()) {
-      Alert.alert("Required", "Please enter a title for the schedule.");
+      setAddError("Please enter a title for the schedule.");
       return;
     }
 
+    setAddError(null);
     setIsCreating(true);
+
     const { data, error } = await apiRequest<ClassSchedule>("/classes/", {
       method: "POST",
       body: JSON.stringify({
@@ -82,17 +142,68 @@ export default function Dashboard() {
     setIsCreating(false);
 
     if (error) {
-      Alert.alert("Create Failed", error);
+      setAddError(error);
     } else if (data) {
-      setAddModal(false)
-      setNewTitle("");
+      closeAddModal();
       fetchSchedules();
     }
+  };
+
+  const handleEdit = async () => {
+    if (!selectedSchedule) return;
+    if (!editedTitle.trim()) {
+      setEditError("Please enter a title for the schedule.");
+      return;
+    }
+
+    setEditError(null);
+    setIsEditing(true);
+
+    const { data, error } = await apiRequest<ClassSchedule>(`/classes/${selectedSchedule.id}/`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: editedTitle.trim(),
+      }),
+    });
+
+    setIsEditing(false);
+
+    if (error) {
+      setEditError(error);
+    } else if (data) {
+      closeEditModal();
+      fetchSchedules();
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    showConfirm(
+      "Delete Schedule",
+      "Are you sure you want to delete this schedule?",
+      async () => {
+        const previousSchedules = [...schedules];
+        setSchedules((prev) => prev.filter((item) => item.id !== id));
+
+        const { error } = await apiRequest(`/classes/${id}/`, {
+          method: "DELETE",
+        });
+
+        if (error) {
+          showAlert("Delete Failed", error);
+          setSchedules(previousSchedules);
+        }
+      },
+      "Delete"
+    );
   };
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
+      <CustomAlertModal
+        state={alertConfig}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+      />
 
       <ScrollView
         className="flex-1"
@@ -115,7 +226,7 @@ export default function Dashboard() {
               </Text>
             </View>
           </View>
-          
+
           <View className="flex-row items-center justify-between mb-8">
             <Text className="text-brand-navy text-[28px] leading-[34px] font-extrabold">
               Dashboard
@@ -123,7 +234,7 @@ export default function Dashboard() {
 
             <Pressable
               className="bg-brand-navy rounded-xl py-2.5 px-3.5 flex-row items-center gap-1.5 active:opacity-90"
-              onPress={() => setAddModal(true)}
+              onPress={openAddModal}
             >
               <Feather name="plus-circle" size={15} color="white" />
               <Text className="text-white text-xs font-bold">Create Sched</Text>
@@ -135,7 +246,7 @@ export default function Dashboard() {
               Saved Schedules
             </Text>
           </View>
-          
+
           {loading ? (
             <View className="py-12 items-center justify-center">
               <ActivityIndicator size="large" color="#14213D" />
@@ -181,12 +292,18 @@ export default function Dashboard() {
                   <View className="h-[1px] bg-brand-hair mb-3" />
 
                   <View className="flex-row items-center justify-end gap-2">
-                    <Pressable className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50">
+                    <Pressable
+                      className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50"
+                      onPress={() => openEditModal(item)}
+                    >
                       <Feather name="edit-2" size={13} color="#14213D" />
                       <Text className="text-xs text-brand-navy font-semibold">Edit</Text>
                     </Pressable>
 
-                    <Pressable className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-red-50">
+                    <Pressable
+                      className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-red-50"
+                      onPress={() => handleDelete(item.id)}
+                    >
                       <Feather name="trash-2" size={13} color="#8B1E3F" />
                       <Text className="text-xs text-brand-crimson font-semibold">Delete</Text>
                     </Pressable>
@@ -196,12 +313,12 @@ export default function Dashboard() {
             </View>
           )}
         </View>
-
+        
         <Modal
           visible={addModal}
           transparent
           animationType="fade"
-          onRequestClose={() => setAddModal(false)}
+          onRequestClose={closeAddModal}
         >
           <View className="flex-1 justify-center items-center bg-black/50 px-6">
             <View className="w-full max-w-[400px] bg-white rounded-2xl p-6 border border-brand-hair">
@@ -209,22 +326,39 @@ export default function Dashboard() {
                 Create New Schedule
               </Text>
 
-              <Text className="text-brand-slate text-xs font-bold mb-1.5 uppercase">
+              <Text
+                className={`${
+                  addError ? "text-brand-crimson" : "text-brand-slate"
+                } text-xs font-bold mb-1.5 uppercase`}
+              >
                 Schedule Title
               </Text>
               <TextInput
-                className="bg-brand-card border border-brand-hair rounded-xl px-4 py-3 text-brand-navy text-sm font-medium mb-6"
+                className={`bg-brand-card border rounded-xl px-4 py-3 text-brand-navy text-sm font-medium ${
+                  addError ? "border-brand-crimson" : "border-brand-hair"
+                }`}
                 placeholder="e.g. A.Y. 2026-2027 1st Sem"
                 placeholderTextColor="#94A3B8"
                 value={newTitle}
-                onChangeText={setNewTitle}
+                onChangeText={(text) => {
+                  setNewTitle(text);
+                  if (addError) setAddError(null);
+                }}
                 autoFocus
               />
+              
+              {addError ? (
+                <Text className="text-brand-crimson text-xs font-medium mt-1.5 mb-4">
+                  {addError}
+                </Text>
+              ) : (
+                <View className="mb-6" />
+              )}
 
               <View className="flex-row justify-end gap-3">
                 <Pressable
                   className="px-4 py-2.5 rounded-xl border border-brand-hair bg-white active:bg-gray-50"
-                  onPress={() => setAddModal(false)}
+                  onPress={closeAddModal}
                 >
                   <Text className="text-brand-slate text-xs font-bold">Cancel</Text>
                 </Pressable>
@@ -243,7 +377,72 @@ export default function Dashboard() {
               </View>
             </View>
           </View>
-      </Modal>
+        </Modal>
+        
+        <Modal
+          visible={editModal}
+          transparent
+          animationType="fade"
+          onRequestClose={closeEditModal}
+        >
+          <View className="flex-1 justify-center items-center bg-black/50 px-6">
+            <View className="w-full max-w-[400px] bg-white rounded-2xl p-6 border border-brand-hair">
+              <Text className="text-brand-navy text-xl font-bold mb-4">
+                Edit Schedule
+              </Text>
+
+              <Text
+                className={`${
+                  editError ? "text-brand-crimson" : "text-brand-slate"
+                } text-xs font-bold mb-1.5 uppercase`}
+              >
+                Schedule Title
+              </Text>
+              <TextInput
+                className={`bg-brand-card border rounded-xl px-4 py-3 text-brand-navy text-sm font-medium ${
+                  editError ? "border-brand-crimson" : "border-brand-hair"
+                }`}
+                placeholder="e.g. A.Y. 2026-2027 1st Sem"
+                placeholderTextColor="#94A3B8"
+                value={editedTitle}
+                onChangeText={(text) => {
+                  setEditedTitle(text);
+                  if (editError) setEditError(null);
+                }}
+                autoFocus
+              />
+              
+              {editError ? (
+                <Text className="text-brand-crimson text-xs font-medium mt-1.5 mb-4">
+                  {editError}
+                </Text>
+              ) : (
+                <View className="mb-6" />
+              )}
+
+              <View className="flex-row justify-end gap-3">
+                <Pressable
+                  className="px-4 py-2.5 rounded-xl border border-brand-hair bg-white active:bg-gray-50"
+                  onPress={closeEditModal}
+                >
+                  <Text className="text-brand-slate text-xs font-bold">Cancel</Text>
+                </Pressable>
+
+                <Pressable
+                  className="px-4 py-2.5 rounded-xl bg-brand-navy active:opacity-90 flex-row items-center justify-center min-w-[80px]"
+                  onPress={handleEdit}
+                  disabled={isEditing}
+                >
+                  {isEditing ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Text className="text-white text-xs font-bold">Save</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
