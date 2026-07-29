@@ -7,33 +7,42 @@ export default function Profile() {
   const wide = width >= 700;
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      <StatusBar style="dark" />
+    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+      <StatusBar style="light" />
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ alignItems: "center", paddingTop: 24, paddingBottom: 24 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
-          <View className="flex-row items-center justify-between mb-8">
-            <View className="flex-row items-center gap-2.5">
-              <View className="w-9 h-9 rounded-md items-center justify-center border-[1.5px] border-brand-navy">
-                <Text className="text-brand-navy text-sm font-bold">S</Text>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="bg-brand-navy pt-4 pb-8 items-center">
+          <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center gap-2">
+                <View className="w-8 h-8 rounded-lg bg-brand-gold items-center justify-center">
+                  <Text className="text-brand-navy text-base font-black">S</Text>
+                </View>
+                <Text className="text-white text-lg font-bold tracking-wide">SCHEDIFY</Text>
               </View>
-              <Text className="text-brand-navy text-lg font-bold">Schedify</Text>
             </View>
-          </View>
-          
-          <Text className="text-brand-navy text-[28px] leading-[34px] font-extrabold mb-4">
-            Profile
-          </Text>
 
-          <View className="rounded-xl p-5 bg-brand-card border border-brand-hair gap-2">
-            <Text className="text-brand-navy font-bold text-base">Sample Profile Page</Text>
-            <Text className="text-brand-slate text-sm leading-5">
-              This is a separate profile screen. You can add your profile details here.
+            <Text className="text-white text-xl font-black uppercase tracking-wide">
+              Profile
             </Text>
+          </View>
+        </View>
+        
+        <View className="items-center py-6">
+          <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
+            <View className="items-center mb-6">
+              <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-1">
+                User Details
+              </Text>
+              <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
+            </View>
+
+            <View className="rounded-2xl p-5 bg-brand-card border border-brand-hair gap-2 shadow-xs">
+              <Text className="text-brand-navy font-bold text-base">Sample Profile Page</Text>
+              <Text className="text-brand-slate text-sm leading-5">
+                This is a separate profile screen. You can add your profile details here.
+              </Text>
+            </View>
           </View>
         </View>
       </ScrollView>

@@ -29,12 +29,12 @@ export default function Dashboard() {
 
   const [schedules, setSchedules] = useState<ClassSchedule[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  
+
   const [addModal, setAddModal] = useState<boolean>(false);
   const [newTitle, setNewTitle] = useState<string>("");
   const [addError, setAddError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState<boolean>(false);
-  
+
   const [editModal, setEditModal] = useState<boolean>(false);
   const [selectedSchedule, setSelectedSchedule] = useState<ClassSchedule | null>(null);
   const [editedTitle, setEditedTitle] = useState<string>("");
@@ -42,7 +42,7 @@ export default function Dashboard() {
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   const [activatingId, setActivatingId] = useState<number | null>(null);
-  
+
   const [alertConfig, setAlertConfig] = useState<AlertState>({
     visible: false,
     title: "",
@@ -71,18 +71,11 @@ export default function Dashboard() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return (
-      date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }) +
-      " • " +
-      date.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    );
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   const fetchSchedules = useCallback(async () => {
@@ -220,171 +213,166 @@ export default function Dashboard() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
-      <StatusBar style="dark" />
+    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+      <StatusBar style="light" />
       <CustomAlertModal
         state={alertConfig}
         onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
       />
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ alignItems: "center", paddingTop: 24, paddingBottom: 24 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
-          <View className="flex-row items-center justify-between mb-8">
-            <View className="flex-row items-center gap-2.5">
-              <View className="w-9 h-9 rounded-md items-center justify-center border-[1.5px] border-brand-navy">
-                <Text className="text-brand-navy text-sm font-bold">S</Text>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="bg-brand-navy pt-4 pb-8 items-center">
+          <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center gap-2">
+                <View className="w-8 h-8 rounded-lg bg-brand-gold items-center justify-center">
+                  <Text className="text-brand-navy text-base font-black">S</Text>
+                </View>
+                <Text className="text-white text-lg font-bold tracking-wide">SCHEDIFY</Text>
               </View>
-              <Text className="text-brand-navy text-lg font-bold">Schedify</Text>
+
+              <Pressable
+                className="bg-brand-gold px-3.5 py-1.5 rounded-full flex-row items-center gap-1 active:opacity-90"
+                onPress={openAddModal}
+              >
+                <Feather name="plus" size={14} color="#14213D" />
+                <Text className="text-brand-navy text-xs font-bold uppercase tracking-wider">
+                  New Sched
+                </Text>
+              </Pressable>
             </View>
 
-            <View className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5 border border-brand-hair bg-brand-card">
-              <Feather name="calendar" size={12} color="#14213D" />
-              <Text className="text-brand-slate text-xs font-semibold">
-                {schedules.length} Timetables
-              </Text>
-            </View>
-          </View>
-
-          <View className="flex-row items-center justify-between mb-8">
-            <Text className="text-brand-navy text-[28px] leading-[34px] font-extrabold">
+            <Text className="text-white text-xl font-black uppercase tracking-wide">
               Dashboard
             </Text>
-
-            <Pressable
-              className="bg-brand-navy rounded-xl py-2.5 px-3.5 flex-row items-center gap-1.5 active:opacity-90"
-              onPress={openAddModal}
-            >
-              <Feather name="plus-circle" size={15} color="white" />
-              <Text className="text-white text-xs font-bold">Create Sched</Text>
-            </Pressable>
           </View>
-
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-brand-navy text-xs font-extrabold uppercase tracking-widest">
-              Saved Schedules
-            </Text>
-          </View>
-
-          {loading ? (
-            <View className="py-12 items-center justify-center">
-              <ActivityIndicator size="large" color="#14213D" />
-            </View>
-          ) : schedules.length === 0 ? (
-            <View className="py-12 items-center justify-center rounded-xl bg-brand-card border border-brand-hair p-6">
-              <Feather name="calendar" size={32} color="#5B6472" />
-              <Text className="text-brand-navy text-base font-bold mt-3 mb-1">
-                No schedules found
-              </Text>
-              <Text className="text-brand-slate text-xs text-center">
-                Tap "Create Sched" above to start adding your weekly class schedules.
-              </Text>
-            </View>
-          ) : (
-            <View className="gap-3.5">
-              {schedules.map((item) => (
-                <View
-                  key={item.id}
-                  className="rounded-xl p-4 bg-brand-card border border-brand-hair"
-                >
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-base text-brand-navy font-bold flex-1 mr-2" numberOfLines={1}>
-                      {item.title}
-                    </Text>
-
-                    {item.is_active && (
-                      <View className="bg-brand-gold/15 border border-brand-gold/40 px-2 py-0.5 rounded-full">
-                        <Text className="text-[10px] text-brand-navy font-extrabold uppercase">
-                          Current
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <View className="flex-row items-center gap-1.5 mb-3">
-                    <Feather name="clock" size={12} color="#5B6472" />
-                    <Text className="text-xs text-brand-slate font-medium">
-                      Created: <Text className="text-brand-navy font-semibold">{formatDate(item.created_at)}</Text>
-                    </Text>
-                  </View>
-
-                  <View className="h-[1px] bg-brand-hair mb-3" />
-
-                  <View className="flex-row items-center justify-end gap-2">
-                    {item.is_active ? (
-                      <Pressable
-                        className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50"
-                      >
-                        <Feather name="eye" size={13} color="#14213D" />
-                        <Text className="text-xs text-brand-navy font-semibold">View</Text>
-                      </Pressable>
-                    ) : (
-                      <Pressable
-                        className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50"
-                        onPress={() => handleSetActive(item.id)}
-                        disabled={activatingId === item.id}
-                      >
-                        {activatingId === item.id ? (
-                          <ActivityIndicator size="small" color="#14213D" />
-                        ) : (
-                          <>
-                            <Feather name="star" size={13} color="#14213D" />
-                            <Text className="text-xs text-brand-navy font-semibold">Set as Active</Text>
-                          </>
-                        )}
-                      </Pressable>
-                    )}
-
-                    <Pressable
-                      className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-gray-50"
-                      onPress={() => openEditModal(item)}
-                    >
-                      <Feather name="edit-2" size={13} color="#14213D" />
-                      <Text className="text-xs text-brand-navy font-semibold">Edit</Text>
-                    </Pressable>
-
-                    <Pressable
-                      className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-brand-hair active:bg-red-50"
-                      onPress={() => handleDelete(item.id)}
-                    >
-                      <Feather name="trash-2" size={13} color="#8B1E3F" />
-                      <Text className="text-xs text-brand-crimson font-semibold">Delete</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
         
-        <Modal
-          visible={addModal}
-          transparent
-          animationType="fade"
-          onRequestClose={closeAddModal}
-        >
-          <View className="flex-1 justify-center items-center bg-black/50 px-6">
-            <View className="w-full max-w-[400px] bg-white rounded-2xl p-6 border border-brand-hair">
-              <Text className="text-brand-navy text-xl font-bold mb-4">
-                Create New Schedule
+        <View className="items-center py-6">
+          <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
+            <View className="items-center mb-6">
+              <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-1">
+                Saved Schedules ({schedules.length})
+              </Text>
+              <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
+            </View>
+
+            {loading ? (
+              <View className="py-12 items-center justify-center">
+                <ActivityIndicator size="small" color="#14213D" />
+              </View>
+            ) : schedules.length === 0 ? (
+              <View className="py-10 items-center justify-center rounded-2xl bg-brand-card border border-brand-hair p-6">
+                <View className="w-10 h-10 rounded-full bg-brand-gold/20 items-center justify-center mb-3">
+                  <Feather name="calendar" size={18} color="#C9A227" />
+                </View>
+                <Text className="text-brand-navy text-sm font-bold mb-1">No Schedules Found</Text>
+                <Text className="text-brand-slate text-xs text-center">
+                  Tap "New Sched" above to begin creating class schedules for this term.
+                </Text>
+              </View>
+            ) : (
+              <View className="gap-3">
+                {schedules.map((item) => {
+                  const isActive = item.is_active;
+                  return (
+                    <View
+                      key={item.id}
+                      className={`relative overflow-hidden rounded-2xl bg-brand-card border p-3 pl-5 shadow-xs transition-all active:scale-[0.98] ${
+                        isActive
+                          ? "border-brand-gold/60 shadow-sm"
+                          : "border-brand-hair"
+                      }`}
+                    >
+                      {isActive && (
+                        <View className="absolute left-0 top-0 bottom-0 w-1.5 bg-brand-gold" />
+                      )}
+                      
+                      <View className="flex-row items-center justify-between gap-3 mb-1.5">
+                        <Text
+                          className="text-base font-bold text-brand-navy flex-1 tracking-tight"
+                          numberOfLines={1}
+                        >
+                          {item.title}
+                        </Text>
+
+                        {isActive ? (
+                          <View className="flex-row items-center gap-1 bg-brand-gold px-2.5 py-1 rounded-full">
+                            <Feather name="check-circle" size={10} color="#14213D" />
+                            <Text className="text-[10px] text-brand-navy font-black uppercase tracking-wider">
+                              Active
+                            </Text>
+                          </View>
+                        ) : (
+                          <Pressable
+                            className="flex-row items-center gap-1 bg-white border border-brand-hair px-2.5 py-1 rounded-full active:bg-brand-hair/30"
+                            onPress={() => handleSetActive(item.id)}
+                            disabled={activatingId === item.id}
+                            hitSlop={6}
+                          >
+                            {activatingId === item.id ? (
+                              <ActivityIndicator size="small" color="#14213D" />
+                            ) : (
+                              <>
+                                <Feather name="star" size={10} color="#5B6472" />
+                                <Text className="text-[10px] text-brand-slate font-bold uppercase tracking-wider">
+                                  Set Active
+                                </Text>
+                              </>
+                            )}
+                          </Pressable>
+                        )}
+                      </View>
+                      
+                      <View className="flex-row items-center gap-1.5 mb-3.5">
+                        <Feather name="calendar" size={12} color="#5B6472" />
+                        <Text className="text-brand-slate text-xs font-medium">
+                          Created {formatDate(item.created_at)}
+                        </Text>
+                      </View>
+                      
+                      <View className="flex-row items-center justify-end gap-2 pt-3 border-t border-brand-hair/80">
+                        <Pressable
+                          className="flex-row items-center gap-1.5 bg-white border border-brand-hair px-3.5 py-1.5 rounded-full active:bg-brand-hair/30"
+                          onPress={() => openEditModal(item)}
+                          hitSlop={6}
+                        >
+                          <Feather name="edit-2" size={12} color="#14213D" />
+                          <Text className="text-xs text-brand-navy font-bold uppercase tracking-wider">
+                            Edit
+                          </Text>
+                        </Pressable>
+
+                        <Pressable
+                          className="flex-row items-center gap-1.5 bg-brand-crimson/10 border border-brand-crimson/20 px-3.5 py-1.5 rounded-full active:bg-brand-crimson/20"
+                          onPress={() => handleDelete(item.id)}
+                          hitSlop={6}
+                        >
+                          <Feather name="trash-2" size={12} color="#8B1E3F" />
+                          <Text className="text-xs text-brand-crimson font-bold uppercase tracking-wider">
+                            Delete
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        </View>
+        
+        <Modal visible={addModal} transparent animationType="fade" onRequestClose={closeAddModal}>
+          <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
+            <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
+              <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-3">
+                Create Schedule
               </Text>
 
-              <Text
-                className={`${
-                  addError ? "text-brand-crimson" : "text-brand-slate"
-                } text-xs font-bold mb-1.5 uppercase`}
-              >
-                Schedule Title
-              </Text>
               <TextInput
-                className={`bg-brand-card border rounded-xl px-4 py-3 text-brand-navy text-sm font-medium ${
-                  addError ? "border-brand-crimson" : "border-brand-hair"
-                }`}
-                placeholder="e.g. A.Y. 2026-2027 1st Sem"
-                placeholderTextColor="#94A3B8"
+                className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium mb-2"
+                placeholder="Schedule Title (e.g., 1st Sem 2026)"
+                placeholderTextColor="#A8ADB8"
                 value={newTitle}
                 onChangeText={(text) => {
                   setNewTitle(text);
@@ -392,64 +380,44 @@ export default function Dashboard() {
                 }}
                 autoFocus
               />
-              
-              {addError ? (
-                <Text className="text-brand-crimson text-xs font-medium mt-1.5 mb-4">
-                  {addError}
-                </Text>
-              ) : (
-                <View className="mb-6" />
-              )}
 
-              <View className="flex-row justify-end gap-3">
+              {addError && <Text className="text-brand-crimson text-xs mb-2">{addError}</Text>}
+
+              <View className="flex-row justify-end gap-2 mt-3">
                 <Pressable
-                  className="px-4 py-2.5 rounded-xl border border-brand-hair bg-white active:bg-gray-50"
+                  className="px-4 py-2 rounded-full border border-brand-hair bg-white"
                   onPress={closeAddModal}
                 >
-                  <Text className="text-brand-slate text-xs font-bold">Cancel</Text>
+                  <Text className="text-brand-slate text-xs font-bold uppercase">Cancel</Text>
                 </Pressable>
 
                 <Pressable
-                  className="px-4 py-2.5 rounded-xl bg-brand-navy active:opacity-90 flex-row items-center justify-center min-w-[80px]"
+                  className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90 min-w-[70px] items-center"
                   onPress={handleCreate}
                   disabled={isCreating}
                 >
                   {isCreating ? (
-                    <ActivityIndicator size="small" color="white" />
+                    <ActivityIndicator size="small" color="#14213D" />
                   ) : (
-                    <Text className="text-white text-xs font-bold">Create</Text>
+                    <Text className="text-brand-navy text-xs font-black uppercase">Create</Text>
                   )}
                 </Pressable>
               </View>
             </View>
           </View>
         </Modal>
-        
-        <Modal
-          visible={editModal}
-          transparent
-          animationType="fade"
-          onRequestClose={closeEditModal}
-        >
-          <View className="flex-1 justify-center items-center bg-black/50 px-6">
-            <View className="w-full max-w-[400px] bg-white rounded-2xl p-6 border border-brand-hair">
-              <Text className="text-brand-navy text-xl font-bold mb-4">
+
+        <Modal visible={editModal} transparent animationType="fade" onRequestClose={closeEditModal}>
+          <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
+            <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
+              <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-3">
                 Edit Schedule
               </Text>
 
-              <Text
-                className={`${
-                  editError ? "text-brand-crimson" : "text-brand-slate"
-                } text-xs font-bold mb-1.5 uppercase`}
-              >
-                Schedule Title
-              </Text>
               <TextInput
-                className={`bg-brand-card border rounded-xl px-4 py-3 text-brand-navy text-sm font-medium ${
-                  editError ? "border-brand-crimson" : "border-brand-hair"
-                }`}
-                placeholder="e.g. A.Y. 2026-2027 1st Sem"
-                placeholderTextColor="#94A3B8"
+                className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium mb-2"
+                placeholder="Schedule Title"
+                placeholderTextColor="#A8ADB8"
                 value={editedTitle}
                 onChangeText={(text) => {
                   setEditedTitle(text);
@@ -457,32 +425,26 @@ export default function Dashboard() {
                 }}
                 autoFocus
               />
-              
-              {editError ? (
-                <Text className="text-brand-crimson text-xs font-medium mt-1.5 mb-4">
-                  {editError}
-                </Text>
-              ) : (
-                <View className="mb-6" />
-              )}
 
-              <View className="flex-row justify-end gap-3">
+              {editError && <Text className="text-brand-crimson text-xs mb-2">{editError}</Text>}
+
+              <View className="flex-row justify-end gap-2 mt-3">
                 <Pressable
-                  className="px-4 py-2.5 rounded-xl border border-brand-hair bg-white active:bg-gray-50"
+                  className="px-4 py-2 rounded-full border border-brand-hair bg-white"
                   onPress={closeEditModal}
                 >
-                  <Text className="text-brand-slate text-xs font-bold">Cancel</Text>
+                  <Text className="text-brand-slate text-xs font-bold uppercase">Cancel</Text>
                 </Pressable>
 
                 <Pressable
-                  className="px-4 py-2.5 rounded-xl bg-brand-navy active:opacity-90 flex-row items-center justify-center min-w-[80px]"
+                  className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90 min-w-[70px] items-center"
                   onPress={handleEdit}
                   disabled={isEditing}
                 >
                   {isEditing ? (
-                    <ActivityIndicator size="small" color="white" />
+                    <ActivityIndicator size="small" color="#14213D" />
                   ) : (
-                    <Text className="text-white text-xs font-bold">Save</Text>
+                    <Text className="text-brand-navy text-xs font-black uppercase">Save</Text>
                   )}
                 </Pressable>
               </View>
