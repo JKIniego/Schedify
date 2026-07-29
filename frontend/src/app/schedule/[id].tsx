@@ -213,6 +213,13 @@ export default function Schedule() {
 	const [endTime, setEndTime] = useState<string>("");
 	const [hexCode, setHexCode] = useState<string>("#A5D6A7");
 	const [isAddingCourse, setIsAddingCourse] = useState<boolean>(false);
+	const [errors, setErrors] = useState<{
+		courseName?: string;
+		room?: string;
+		selectedDays?: string;
+		startTime?: string;
+		endTime?: string;
+	}>({});
 
   const closeAddCourseModal = () => {
     setAddCourseModal(false);
@@ -223,6 +230,7 @@ export default function Schedule() {
 		setEndTime("");
 		setHexCode("#A5D6A7");
 		setIsColorDropdownOpen(false);
+		setErrors({});
   }
 
 	const toggleDay = (day: string) => {
@@ -234,8 +242,31 @@ export default function Schedule() {
 	};
 
 	const handleAddCourse = async () => {
+		const newErrors: typeof errors = {};
 
-	}
+		if (!courseName.trim()) {
+			newErrors.courseName = "Course name is required.";
+		}
+		if (!room.trim()) {
+			newErrors.room = "Room / Location is required.";
+		}
+		if (selectedDays.length === 0) {
+			newErrors.selectedDays = "Select at least one day.";
+		}
+		if (!startTime.trim()) {
+			newErrors.startTime = "Start time is required.";
+		}
+		if (!endTime.trim()) {
+			newErrors.endTime = "End time is required.";
+		}
+
+		if (Object.keys(newErrors).length > 0) {
+			setErrors(newErrors);
+			return;
+		}
+
+		setErrors({});
+	};
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
@@ -540,13 +571,23 @@ export default function Schedule() {
 							Course Name
 						</Text>
 						<TextInput
-							className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium mb-3"
-							placeholder="Schedule Title (e.g., 1st Sem 2026)"
+							className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+								errors.courseName ? "border-red-500" : "border-brand-hair"
+							}`}
+							placeholder="Schedule Title (e.g., CS 101)"
 							placeholderTextColor="#A8ADB8"
 							value={courseName}
-							onChangeText={(text) => setCourseName(text)}
+							onChangeText={(text) => {
+								setCourseName(text);
+								if (errors.courseName) setErrors((prev) => ({ ...prev, courseName: undefined }));
+							}}
 							autoFocus
 						/>
+						{errors.courseName && (
+							<Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
+								{errors.courseName}
+							</Text>
+						)}
 
 						<View className="relative z-20 mb-3">
 							<Text className="text-brand-navy text-xs font-black mb-1">
@@ -608,42 +649,62 @@ export default function Schedule() {
 							Days
 						</Text>
 						<View className="flex-row justify-between mb-3">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => {
-                const isSelected = selectedDays.includes(day);
-                return (
-                  <Pressable
-                    key={day}
-                    onPress={() => toggleDay(day)}
-                    className={`px-2.5 py-1.5 rounded-lg border ${
-                      isSelected
-                        ? "bg-brand-navy border-brand-navy"
-                        : "bg-brand-card border-brand-hair"
-                    }`}
-                  >
-                    <Text
-                      className={`text-[10px] font-bold ${
-                        isSelected ? "text-white" : "text-brand-slate"
-                      }`}
-                    >
-                      {day}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+							{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => {
+								const isSelected = selectedDays.includes(day);
+								return (
+									<Pressable
+										key={day}
+										onPress={() => {
+											toggleDay(day);
+											if (errors.selectedDays) setErrors((prev) => ({ ...prev, selectedDays: undefined }));
+										}}
+										className={`px-2.5 py-1.5 rounded-lg border ${
+											isSelected
+												? "bg-brand-navy border-brand-navy"
+												: errors.selectedDays
+												? "bg-brand-card border-red-500"
+												: "bg-brand-card border-brand-hair"
+										}`}
+									>
+										<Text
+											className={`text-[10px] font-bold ${
+												isSelected ? "text-white" : "text-brand-slate"
+											}`}
+										>
+											{day}
+										</Text>
+									</Pressable>
+								);
+							})}
+						</View>
+						{errors.selectedDays && (
+							<Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
+								{errors.selectedDays}
+							</Text>
+						)}
 
-						<View className="flex-row gap-2 mb-3">
+						<View className="flex-row gap-2 mt-3">
 							<View className="flex-1">
 								<Text className="text-brand-navy text-xs font-black mb-1">
 									Start Time
 								</Text>
 								<TextInput
-									className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium"
+									className={`bg-brand-card border rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium ${
+										errors.startTime ? "border-red-500" : "border-brand-hair"
+									}`}
 									placeholder="08:00"
 									placeholderTextColor="#A8ADB8"
 									value={startTime}
-									onChangeText={(text) => setStartTime(text)}
+									onChangeText={(text) => {
+										setStartTime(text);
+										if (errors.startTime) setErrors((prev) => ({ ...prev, startTime: undefined }));
+									}}
 								/>
+								{errors.startTime && (
+									<Text className="text-red-500 text-[10px] font-semibold mt-0.5">
+										{errors.startTime}
+									</Text>
+								)}
 							</View>
 
 							<View className="flex-1">
@@ -651,26 +712,45 @@ export default function Schedule() {
 									End Time
 								</Text>
 								<TextInput
-									className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium"
+									className={`bg-brand-card border rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium ${
+										errors.endTime ? "border-red-500" : "border-brand-hair"
+									}`}
 									placeholder="10:00"
 									placeholderTextColor="#A8ADB8"
 									value={endTime}
-									onChangeText={(text) => setEndTime(text)}
+									onChangeText={(text) => {
+										setEndTime(text);
+										if (errors.endTime) setErrors((prev) => ({ ...prev, endTime: undefined }));
+									}}
 								/>
+								{errors.endTime && (
+									<Text className="text-red-500 text-[10px] font-semibold mt-0.5">
+										{errors.endTime}
+									</Text>
+								)}
 							</View>
 						</View>
 
-						<Text className="text-brand-navy text-xs font-black mb-1">
+						<Text className="text-brand-navy text-xs font-black mb-1 mt-3">
 							Room
 						</Text>
 						<TextInput
-							className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium"
+							className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+								errors.room ? "border-red-500" : "border-brand-hair"
+							}`}
 							placeholder="Room Name"
 							placeholderTextColor="#A8ADB8"
 							value={room}
-							onChangeText={(text) => setRoom(text)}
-							autoFocus
+							onChangeText={(text) => {
+								setRoom(text);
+								if (errors.room) setErrors((prev) => ({ ...prev, room: undefined }));
+							}}
 						/>
+						{errors.room && (
+							<Text className="text-red-500 text-[10px] font-semibold mt-0.5">
+								{errors.room}
+							</Text>
+						)}
 
 						<View className="flex-row justify-end gap-2 mt-10">
 							<Pressable
