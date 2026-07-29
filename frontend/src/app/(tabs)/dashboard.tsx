@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "expo-router";
 import {
   Pressable,
   ScrollView,
@@ -24,6 +25,7 @@ interface ClassSchedule {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 700;
 
@@ -332,6 +334,19 @@ export default function Dashboard() {
                       </View>
                       
                       <View className="flex-row items-center justify-end gap-2 pt-3 border-t border-brand-hair/80">
+                        {isActive && (
+                          <Pressable
+                            className="flex-row items-center gap-1.5 bg-white border border-brand-hair px-3.5 py-1.5 rounded-full active:bg-brand-hair/30"
+                            onPress={() => router.push(`../schedule/${item.id}`)}
+                            hitSlop={6}
+                          >
+                            <Feather name="eye" size={12} color="#14213D" />
+                            <Text className="text-xs text-brand-navy font-bold uppercase tracking-wider">
+                              View
+                            </Text>
+                          </Pressable>
+                        )}
+
                         <Pressable
                           className="flex-row items-center gap-1.5 bg-white border border-brand-hair px-3.5 py-1.5 rounded-full active:bg-brand-hair/30"
                           onPress={() => openEditModal(item)}
