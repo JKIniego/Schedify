@@ -380,7 +380,7 @@ export default function Dashboard() {
         <Modal visible={addModal} transparent animationType="fade" onRequestClose={closeAddModal}>
           <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
             <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
-              <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-3">
+              <Text className="text-brand-navy text-sm font-black uppercase tracking-widest mb-3">
                 Create Schedule
               </Text>
 
