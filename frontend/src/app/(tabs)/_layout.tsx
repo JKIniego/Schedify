@@ -40,6 +40,18 @@ export default function TabsLayout() {
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          tabBarLabel: "Calendar",
+          tabBarActiveTintColor: "#14213D",
+          tabBarInactiveTintColor: "#5B6472",
+          tabBarIcon: ({ color }) => (
+            <Feather name="calendar" size={20} color={color} />
+          ),
+        }}
+      />
       
       <Tabs.Screen
         name="settings"
