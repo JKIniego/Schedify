@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   ScrollView,
   Text,
+	TextInput,
   useWindowDimensions,
   View,
   Pressable,
@@ -58,6 +59,14 @@ const DAYS: ("Mon" | "Tue" | "Wed" | "Thu" | "Fri")[] = [
   "Wed",
   "Thu",
   "Fri",
+];
+
+const COURSE_COLORS = [
+  "#FAF1F1", "#FAF5F1", "#FAF9F1", "#F2FAF4", "#F1F6FA", "#F5F1FA", "#FAF1F6",
+  "#F5C7C7", "#F5DDD7", "#F5F2C7", "#CEF5D6", "#C7E0F5", "#E0C7F5", "#F5C7DF",
+  "#F2A8A8", "#F2CDA8", "#F2ECA8", "#A8F2B9", "#A8CFF2", "#CFA8F2", "#F2A8CD",
+  "#EE8B8B", "#EEBD8B", "#EEE58B", "#8BEEA3", "#8BBEEE", "#BE8BEE", "#EE8BBD",
+  "#EA7070", "#EAAD70", "#EADE70", "#70EA8D", "#70ADEA", "#AD70EA", "#EA70AD",
 ];
 
 const ROW_HEIGHT = 56;
@@ -188,6 +197,45 @@ export default function Schedule() {
       }),
     ]).start(() => setDrawerVisible(false));
   };
+
+	const [isColorDropdownOpen, setIsColorDropdownOpen] = useState(false);
+
+
+
+
+
+
+  const [addCourseModal, setAddCourseModal] = useState(false);
+	const [courseName, setCourseName] = useState<string>("");
+	const [room, setRoom] = useState<string>("");
+	const [selectedDays, setSelectedDays] = useState<string[]>([]);
+	const [startTime, setStartTime] = useState<string>("");
+	const [endTime, setEndTime] = useState<string>("");
+	const [hexCode, setHexCode] = useState<string>("#A5D6A7");
+	const [isAddingCourse, setIsAddingCourse] = useState<boolean>(false);
+
+  const closeAddCourseModal = () => {
+    setAddCourseModal(false);
+		setCourseName("");
+		setRoom("");
+		setSelectedDays([]);
+		setStartTime("");
+		setEndTime("");
+		setHexCode("#A5D6A7");
+		setIsColorDropdownOpen(false);
+  }
+
+	const toggleDay = (day: string) => {
+		if (selectedDays.includes(day)) {
+			setSelectedDays(selectedDays.filter((d) => d !== day));
+		} else {
+			setSelectedDays([...selectedDays, day]);
+		}
+	};
+
+	const handleAddCourse = async () => {
+
+	}
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
@@ -389,7 +437,7 @@ export default function Schedule() {
             style={[
               StyleSheet.absoluteFillObject,
               {
-                backgroundColor: "rgba(0, 0, 0, 0.6)",
+                backgroundColor: "rgba(20, 33, 61, 0.6)",
                 opacity: fadeAnim,
               },
             ]}
@@ -466,7 +514,10 @@ export default function Schedule() {
               </ScrollView>
 
               <View className="p-4 border-t border-brand-hair bg-white">
-                <Pressable className="flex-row items-center justify-center gap-2 bg-brand-navy py-3 px-4 rounded-xl active:opacity-90">
+                <Pressable
+									className="flex-row items-center justify-center gap-2 bg-brand-navy py-3 px-4 rounded-xl active:opacity-90"
+									onPress={() => setAddCourseModal(true)}
+								>
                   <Feather name="plus" size={16} color="#FFFFFF" />
                   <Text className="text-white text-xs font-bold uppercase tracking-wider">
                     Add New Course
@@ -476,6 +527,173 @@ export default function Schedule() {
             </SafeAreaView>
           </Animated.View>
         </View>
+      </Modal>
+
+      <Modal visible={addCourseModal} transparent animationType="fade" onRequestClose={closeAddCourseModal}>
+				<View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
+					<View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
+						<Text className="text-brand-navy text-sm font-black uppercase tracking-widest mb-3">
+							Add Course
+						</Text>
+
+						<Text className="text-brand-navy text-xs font-black mb-1">
+							Course Name
+						</Text>
+						<TextInput
+							className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium mb-3"
+							placeholder="Schedule Title (e.g., 1st Sem 2026)"
+							placeholderTextColor="#A8ADB8"
+							value={courseName}
+							onChangeText={(text) => setCourseName(text)}
+							autoFocus
+						/>
+
+						<View className="relative z-20 mb-3">
+							<Text className="text-brand-navy text-xs font-black mb-1">
+								Color
+							</Text>
+							
+							<Pressable
+								className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 flex-row items-center justify-between active:bg-brand-hair/40"
+								onPress={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
+							>
+								<View className="flex-row items-center gap-2.5">
+									<View
+										style={{ backgroundColor: hexCode }}
+										className="w-4 h-4 rounded-full border border-black/10"
+									/>
+									<Text className="text-brand-navy text-xs font-semibold uppercase">
+										{hexCode}
+									</Text>
+								</View>
+
+								<Feather
+									name={isColorDropdownOpen ? "chevron-up" : "chevron-down"}
+									size={16}
+									color="#14213D"
+								/>
+							</Pressable>
+							
+							{isColorDropdownOpen && (
+								<View className="absolute top-[60px] left-0 right-0 bg-white border border-brand-hair rounded-xl shadow-lg p-3 z-50">
+									<View className="flex-row flex-wrap gap-2 justify-between">
+										{COURSE_COLORS.map((color) => {
+											const isSelected = hexCode === color;
+											return (
+												<Pressable
+													key={color}
+													style={{ backgroundColor: color }}
+													className={`w-7 h-7 rounded-lg items-center justify-center border ${
+														isSelected
+															? "border-brand-navy scale-105 shadow-xs"
+															: "border-black/10 active:opacity-80"
+													}`}
+													onPress={() => {
+														setHexCode(color);
+														setIsColorDropdownOpen(false);
+													}}
+												>
+													{isSelected && (
+														<Feather name="check" size={14} color="#14213D" />
+													)}
+												</Pressable>
+											);
+										})}
+									</View>
+								</View>
+							)}
+						</View>
+
+						<Text className="text-brand-navy text-xs font-black mb-1">
+							Days
+						</Text>
+						<View className="flex-row justify-between mb-3">
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => {
+                const isSelected = selectedDays.includes(day);
+                return (
+                  <Pressable
+                    key={day}
+                    onPress={() => toggleDay(day)}
+                    className={`px-2.5 py-1.5 rounded-lg border ${
+                      isSelected
+                        ? "bg-brand-navy border-brand-navy"
+                        : "bg-brand-card border-brand-hair"
+                    }`}
+                  >
+                    <Text
+                      className={`text-[10px] font-bold ${
+                        isSelected ? "text-white" : "text-brand-slate"
+                      }`}
+                    >
+                      {day}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+						<View className="flex-row gap-2 mb-3">
+							<View className="flex-1">
+								<Text className="text-brand-navy text-xs font-black mb-1">
+									Start Time
+								</Text>
+								<TextInput
+									className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium"
+									placeholder="08:00"
+									placeholderTextColor="#A8ADB8"
+									value={startTime}
+									onChangeText={(text) => setStartTime(text)}
+								/>
+							</View>
+
+							<View className="flex-1">
+								<Text className="text-brand-navy text-xs font-black mb-1">
+									End Time
+								</Text>
+								<TextInput
+									className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium"
+									placeholder="10:00"
+									placeholderTextColor="#A8ADB8"
+									value={endTime}
+									onChangeText={(text) => setEndTime(text)}
+								/>
+							</View>
+						</View>
+
+						<Text className="text-brand-navy text-xs font-black mb-1">
+							Room
+						</Text>
+						<TextInput
+							className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium"
+							placeholder="Room Name"
+							placeholderTextColor="#A8ADB8"
+							value={room}
+							onChangeText={(text) => setRoom(text)}
+							autoFocus
+						/>
+
+						<View className="flex-row justify-end gap-2 mt-10">
+							<Pressable
+								className="px-4 py-2 rounded-full border border-brand-hair bg-white"
+								onPress={closeAddCourseModal}
+							>
+								<Text className="text-brand-slate text-xs font-bold uppercase">Cancel</Text>
+							</Pressable>
+
+							<Pressable
+								className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90 min-w-[70px] items-center"
+								onPress={handleAddCourse}
+								disabled={isAddingCourse}
+							>
+								{isAddingCourse ? (
+									<ActivityIndicator size="small" color="#14213D" />
+								) : (
+									<Text className="text-brand-navy text-xs font-black uppercase">Add</Text>
+								)}
+							</Pressable>
+						</View>
+					</View>
+				</View>
       </Modal>
     </SafeAreaView>
   );
