@@ -117,6 +117,16 @@ export default function Schedule() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 700;
+  
+  const horizontalPadding = wide ? 64 : 48;
+  const availableWidth = width - horizontalPadding;
+  const timeColWidth = Math.max(54, Math.floor(availableWidth * 0.12));
+  const minDayColWidth = 95;
+  const calculatedDayColWidth = Math.floor(
+    (availableWidth - timeColWidth) / DAYS.length
+  );
+  const dayColWidth = Math.max(minDayColWidth, calculatedDayColWidth);
+  const totalGridWidth = timeColWidth + dayColWidth * DAYS.length;
 
   const [scheduleItems, setScheduleItems] = useState<GridSlot[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -254,16 +264,20 @@ export default function Schedule() {
                 showsHorizontalScrollIndicator={false}
                 className="rounded-2xl border border-brand-hair bg-white shadow-xs mb-6"
               >
-                <View className="min-w-[620px]">
+                <View style={{ width: totalGridWidth }}>
                   <View className="flex-row bg-brand-navy border-b border-brand-hair">
-                    <View className="w-16 p-2 items-center justify-center border-r border-white/10">
+                    <View
+                      style={{ width: timeColWidth }}
+                      className="p-2 items-center justify-center border-r border-white/10"
+                    >
                       <Feather name="clock" size={12} color="#C9A227" />
                     </View>
 
                     {DAYS.map((day) => (
                       <View
                         key={day}
-                        className="flex-1 min-w-[105px] py-2.5 items-center justify-center border-r border-white/10"
+                        style={{ width: dayColWidth }}
+                        className="py-2.5 items-center justify-center border-r border-white/10"
                       >
                         <Text className="text-white text-xs font-black uppercase tracking-wider">
                           {day}
@@ -271,9 +285,12 @@ export default function Schedule() {
                       </View>
                     ))}
                   </View>
-
+                  
                   <View className="flex-row relative">
-                    <View className="w-16 border-r border-brand-hair bg-brand-card/40">
+                    <View
+                      style={{ width: timeColWidth }}
+                      className="border-r border-brand-hair bg-brand-card/40"
+                    >
                       {HOURS.map((hour) => (
                         <View
                           key={hour}
@@ -286,11 +303,12 @@ export default function Schedule() {
                         </View>
                       ))}
                     </View>
-
+                    
                     {DAYS.map((day) => (
                       <View
                         key={day}
-                        className="flex-1 min-w-[105px] border-r border-brand-hair relative"
+                        style={{ width: dayColWidth }}
+                        className="border-r border-brand-hair relative"
                       >
                         {HOURS.map((hour) => (
                           <View
@@ -299,7 +317,7 @@ export default function Schedule() {
                             className="border-b border-brand-hair/30"
                           />
                         ))}
-
+                        
                         {scheduleItems
                           .filter((item) => item.days.includes(day))
                           .map((item) => {
@@ -359,7 +377,7 @@ export default function Schedule() {
           </View>
         </View>
       </ScrollView>
-
+      
       <Modal
         visible={drawerVisible}
         transparent={true}
@@ -434,7 +452,6 @@ export default function Schedule() {
                         </Text>
                       </View>
 
-                      {/* Edit & Delete Action Buttons */}
                       <View className="flex-row items-center gap-1.5">
                         <Pressable className="w-8 h-8 rounded-lg bg-white border border-brand-hair items-center justify-center active:bg-brand-hair">
                           <Feather name="edit-2" size={14} color="#14213D" />
@@ -448,7 +465,6 @@ export default function Schedule() {
                 )}
               </ScrollView>
 
-              {/* Add New Course Button Container */}
               <View className="p-4 border-t border-brand-hair bg-white">
                 <Pressable className="flex-row items-center justify-center gap-2 bg-brand-navy py-3 px-4 rounded-xl active:opacity-90">
                   <Feather name="plus" size={16} color="#FFFFFF" />
