@@ -188,7 +188,7 @@ export default function Schedule() {
           <View
             style={{
               width: "100%",
-              maxWidth: 480,
+              maxWidth: width,
               paddingHorizontal: wide ? 32 : 24,
             }}
           >
@@ -230,7 +230,7 @@ export default function Schedule() {
           <View
             style={{
               width: "100%",
-              maxWidth: 480,
+              maxWidth: width,
               paddingHorizontal: wide ? 32 : 24,
             }}
           >

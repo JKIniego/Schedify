@@ -12,7 +12,7 @@ export default function Calendar() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="bg-brand-navy pt-4 pb-8 items-center">
-          <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
+          <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center gap-2">
                 <View className="w-8 h-8 rounded-lg bg-brand-gold items-center justify-center">
@@ -29,7 +29,7 @@ export default function Calendar() {
         </View>
         
         <View className="items-center py-6">
-          <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
+          <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
             <View className="items-center mb-6">
               <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-1">
                 Calendar
