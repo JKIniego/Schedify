@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   ScrollView,
   Text,
@@ -21,6 +21,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { apiRequest } from "../../utils/api";
 import { CustomAlertModal, AlertState } from "../../utils/alert";
 
+type DayType = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
+
 interface CourseAPIResponse {
   id: number;
   name: string;
@@ -36,7 +38,7 @@ interface GridSlot {
   code: string;
   title: string;
   room: string;
-  days: ("Mon" | "Tue" | "Wed" | "Thu" | "Fri")[];
+  days: DayType[];
   startHour: number;
   durationHours: number;
   timeDisplay: string;
@@ -45,26 +47,20 @@ interface GridSlot {
   rawEndTime: string;
 }
 
-const HOURS = [
-  "8:00 AM",
-  "9:00 AM",
-  "10:00 AM",
-  "11:00 AM",
-  "12:00 PM",
-  "1:00 PM",
-  "2:00 PM",
-  "3:00 PM",
-  "4:00 PM",
-  "5:00 PM",
-];
+const WEEKDAYS: DayType[] = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+const ALL_DAYS: DayType[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const DAYS: ("Mon" | "Tue" | "Wed" | "Thu" | "Fri")[] = [
-  "Mon",
-  "Tue",
-  "Wed",
-  "Thu",
-  "Fri",
-];
+const DEFAULT_START_HOUR = 8;
+const DEFAULT_END_HOUR = 17;
+
+const BASE_ROW_HEIGHT = 60;
+
+const formatHourLabel = (hourDecimal: number): string => {
+  const h = Math.floor(hourDecimal);
+  const period = h >= 12 ? "PM" : "AM";
+  const displayHour = h % 12 === 0 ? 12 : h % 12;
+  return `${displayHour}:00 ${period}`;
+};
 
 const COURSE_COLORS = [
   "#FAF1F1", "#FAF5F1", "#FAF9F1", "#F2FAF4", "#F1F6FA", "#F5F1FA", "#FAF1F6",
@@ -73,8 +69,6 @@ const COURSE_COLORS = [
   "#EE8B8B", "#EEBD8B", "#EEE58B", "#8BEEA3", "#8BBEEE", "#BE8BEE", "#EE8BBD",
   "#EA7070", "#EAAD70", "#EADE70", "#70EA8D", "#70ADEA", "#AD70EA", "#EA70AD",
 ];
-
-const ROW_HEIGHT = 56;
 
 const parseTimeToDecimal = (timeStr: string): number => {
   if (!timeStr) return 8;
@@ -111,16 +105,12 @@ const dateToHHMM = (date: Date): string => {
   return `${hours}:${minutes}`;
 };
 
-const parseDays = (
-  days: CourseAPIResponse["days"]
-): ("Mon" | "Tue" | "Wed" | "Thu" | "Fri")[] => {
+const parseDays = (days: CourseAPIResponse["days"]): DayType[] => {
   if (Array.isArray(days)) {
-    return days as ("Mon" | "Tue" | "Wed" | "Thu" | "Fri")[];
+    return days as DayType[];
   }
   if (typeof days === "string") {
-    return days
-      .split(",")
-      .map((d) => d.trim()) as ("Mon" | "Tue" | "Wed" | "Thu" | "Fri")[];
+    return days.split(",").map((d) => d.trim()) as DayType[];
   }
   return [];
 };
@@ -128,7 +118,7 @@ const parseDays = (
 const mapApiToGridSlot = (course: CourseAPIResponse): GridSlot => {
   const startDecimal = parseTimeToDecimal(course.start_time);
   const endDecimal = parseTimeToDecimal(course.end_time);
-  const duration = Math.max(endDecimal - startDecimal, 0.5);
+  const duration = Math.max(endDecimal - startDecimal, 0.25);
 
   return {
     id: String(course.id),
@@ -150,19 +140,53 @@ export default function Schedule() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 700;
+
+  const [scheduleItems, setScheduleItems] = useState<GridSlot[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   
+  const { rowHeight, pixelsPerHour } = useMemo(() => {
+    if (scheduleItems.length === 0) {
+      return { rowHeight: BASE_ROW_HEIGHT, pixelsPerHour: BASE_ROW_HEIGHT };
+    }
+
+    const minDurationHours = Math.min(
+      ...scheduleItems.map((item) => item.durationHours)
+    );
+    
+    if (minDurationHours < 1) {
+      const pixelsPerHour = BASE_ROW_HEIGHT / Math.max(minDurationHours, 0.25);
+
+      return {
+        rowHeight: pixelsPerHour,
+        pixelsPerHour: pixelsPerHour,
+      };
+    }
+
+    return {
+      rowHeight: BASE_ROW_HEIGHT,
+      pixelsPerHour: BASE_ROW_HEIGHT,
+    };
+  }, [scheduleItems]);
+
+  const activeDays = useMemo<DayType[]>(() => {
+    const hasSat = scheduleItems.some((item) => item.days.includes("Sat"));
+    const hasSun = scheduleItems.some((item) => item.days.includes("Sun"));
+
+    const days: DayType[] = [...WEEKDAYS];
+    if (hasSat) days.push("Sat");
+    if (hasSun) days.push("Sun");
+    return days;
+  }, [scheduleItems]);
+
   const horizontalPadding = wide ? 64 : 48;
   const availableWidth = width - horizontalPadding;
   const timeColWidth = Math.max(54, Math.floor(availableWidth * 0.12));
   const minDayColWidth = 95;
   const calculatedDayColWidth = Math.floor(
-    (availableWidth - timeColWidth) / DAYS.length
+    (availableWidth - timeColWidth) / activeDays.length
   );
   const dayColWidth = Math.max(minDayColWidth, calculatedDayColWidth);
-  const totalGridWidth = timeColWidth + dayColWidth * DAYS.length;
-
-  const [scheduleItems, setScheduleItems] = useState<GridSlot[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const totalGridWidth = timeColWidth + dayColWidth * activeDays.length;
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const drawerWidth = Math.min(width * 0.85, 320);
@@ -303,14 +327,14 @@ export default function Schedule() {
     if (startTime && endTime && newStartDecimal >= newEndDecimal) {
       newErrors.endTime = "End time must be after start time.";
     }
-    
+
     if (!newErrors.startTime && !newErrors.endTime && selectedDays.length > 0) {
       const conflictingCourse = scheduleItems.find((item) => {
         if (editingCourseId && item.id === editingCourseId) return false;
-        
+
         const hasSharedDay = item.days.some((day) => selectedDays.includes(day));
         if (!hasSharedDay) return false;
-        
+
         const existingStart = item.startHour;
         const existingEnd = item.startHour + item.durationHours;
 
@@ -420,6 +444,38 @@ export default function Schedule() {
     );
   };
 
+  const { minHour, dynamicHours } = useMemo(() => {
+    let min = DEFAULT_START_HOUR;
+    let max = DEFAULT_END_HOUR;
+
+    scheduleItems.forEach((item) => {
+      const start = Math.floor(item.startHour);
+      const end = Math.ceil(item.startHour + item.durationHours);
+      if (start < min) min = start;
+      if (end > max) max = end;
+    });
+
+    if (addCourseModal) {
+      if (startTime) {
+        const modalStart = Math.floor(parseTimeToDecimal(startTime));
+        if (modalStart < min) min = modalStart;
+        if (modalStart > max) max = modalStart;
+      }
+      if (endTime) {
+        const modalEnd = Math.ceil(parseTimeToDecimal(endTime));
+        if (modalEnd < min) min = modalEnd;
+        if (modalEnd > max) max = modalEnd;
+      }
+    }
+
+    const hours = [];
+    for (let h = min; h <= max; h++) {
+      hours.push(h);
+    }
+
+    return { minHour: min, maxHour: max, dynamicHours: hours };
+  }, [scheduleItems, addCourseModal, startTime, endTime]);
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       <StatusBar style="light" />
@@ -428,7 +484,11 @@ export default function Schedule() {
         onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+      >
         <View className="bg-brand-navy pt-4 pb-8 items-center">
           <View
             style={{
@@ -494,113 +554,131 @@ export default function Schedule() {
                 </Text>
               </View>
             ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                className="rounded-2xl border border-brand-hair bg-white shadow-xs mb-6"
-              >
-                <View style={{ width: totalGridWidth }}>
-                  <View className="flex-row bg-brand-navy border-b border-brand-hair">
-                    <View
-                      style={{ width: timeColWidth }}
-                      className="p-2 items-center justify-center border-r border-white/10"
-                    >
-                      <Feather name="clock" size={12} color="#C9A227" />
-                    </View>
-
-                    {DAYS.map((day) => (
+              <View className="rounded-2xl border border-brand-hair bg-white shadow-xs mb-6 overflow-hidden">
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                >
+                  <View style={{ width: totalGridWidth }}>
+                    <View className="flex-row bg-brand-navy border-b border-brand-hair z-10">
                       <View
-                        key={day}
-                        style={{ width: dayColWidth }}
-                        className="py-2.5 items-center justify-center border-r border-white/10"
+                        style={{ width: timeColWidth }}
+                        className="p-2 items-center justify-center border-r border-white/10"
                       >
-                        <Text className="text-white text-xs font-black uppercase tracking-wider">
-                          {day}
-                        </Text>
+                        <Feather name="clock" size={12} color="#C9A227" />
                       </View>
-                    ))}
-                  </View>
-                  
-                  <View className="flex-row relative">
-                    <View
-                      style={{ width: timeColWidth }}
-                      className="border-r border-brand-hair bg-brand-card/40"
-                    >
-                      {HOURS.map((hour) => (
+
+                      {activeDays.map((day) => (
                         <View
-                          key={hour}
-                          style={{ height: ROW_HEIGHT }}
-                          className="border-b border-brand-hair/60 justify-start pt-1 items-center"
+                          key={day}
+                          style={{ width: dayColWidth }}
+                          className="py-2.5 items-center justify-center border-r border-white/10"
                         >
-                          <Text className="text-[10px] text-brand-slate font-bold">
-                            {hour}
+                          <Text className="text-white text-xs font-black uppercase tracking-wider">
+                            {day}
                           </Text>
                         </View>
                       ))}
                     </View>
                     
-                    {DAYS.map((day) => (
-                      <View
-                        key={day}
-                        style={{ width: dayColWidth }}
-                        className="border-r border-brand-hair relative"
-                      >
-                        {HOURS.map((hour) => (
-                          <View
-                            key={hour}
-                            style={{ height: ROW_HEIGHT }}
-                            className="border-b border-brand-hair/30"
-                          />
-                        ))}
+                    <ScrollView
+                      style={{ height: 600 }}
+                      nestedScrollEnabled={true}
+                      showsVerticalScrollIndicator={true}
+                    >
+                      <View className="flex-row relative">
+                        <View
+                          style={{ width: timeColWidth }}
+                          className="border-r border-brand-hair bg-brand-card/40"
+                        >
+                          {dynamicHours.map((hour) => (
+                            <View
+                              key={hour}
+                              style={{ height: rowHeight }}
+                              className="border-b border-brand-hair/60 justify-start pt-1 items-center"
+                            >
+                              <Text className="text-[10px] text-brand-slate font-bold">
+                                {formatHourLabel(hour)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
                         
-                        {scheduleItems
-                          .filter((item) => item.days.includes(day))
-                          .map((item) => {
-                            const topOffset = (item.startHour - 8) * ROW_HEIGHT;
-                            const blockHeight = item.durationHours * ROW_HEIGHT;
+                        {activeDays.map((day) => (
+                          <View
+                            key={day}
+                            style={{ width: dayColWidth }}
+                            className="border-r border-brand-hair relative"
+                          >
+                            {dynamicHours.map((hour) => (
+                              <View
+                                key={hour}
+                                style={{ height: rowHeight }}
+                                className="border-b border-brand-hair/30"
+                              />
+                            ))}
 
-                            return (
-                              <Pressable
-                                key={`${item.id}-${day}`}
-                                style={{
-                                  position: "absolute",
-                                  top: topOffset + 2,
-                                  left: 2,
-                                  right: 2,
-                                  height: blockHeight - 4,
-                                  backgroundColor: item.bgColor,
-                                }}
-                                className="border border-black/10 rounded-lg p-1.5 justify-between shadow-xs active:opacity-90"
-                              >
-                                <View>
-                                  <Text
-                                    className="text-[11px] font-black tracking-tight leading-tight text-black"
-                                    numberOfLines={1}
-                                  >
-                                    {item.code}
-                                  </Text>
-                                  <Text className="text-[9px] text-black/80 font-bold mt-0.5">
-                                    {item.timeDisplay}
-                                  </Text>
-                                </View>
+                            {scheduleItems
+                              .filter((item) => item.days.includes(day as any))
+                              .map((item) => {
+                                const topOffset = (item.startHour - minHour) * pixelsPerHour;
+                                const blockHeight = item.durationHours * pixelsPerHour;
+                                const isShortBlock = blockHeight < 36;
 
-                                <View className="flex-row items-center gap-1">
-                                  <Feather name="map-pin" size={8} color="#000000" />
-                                  <Text
-                                    className="text-[9px] text-black font-extrabold uppercase"
-                                    numberOfLines={1}
+                                return (
+                                  <Pressable
+                                    key={`${item.id}-${day}`}
+                                    style={{
+                                      position: "absolute",
+                                      top: topOffset + 1,
+                                      left: 1,
+                                      right: 1,
+                                      height: Math.max(blockHeight - 2, 20),
+                                      backgroundColor: item.bgColor,
+                                    }}
+                                    className={`border border-black/10 rounded-md overflow-hidden ${
+                                      isShortBlock ? "px-1 py-0.5 justify-center" : "p-1.5 justify-between"
+                                    } shadow-xs active:opacity-90`}
                                   >
-                                    {item.room}
-                                  </Text>
-                                </View>
-                              </Pressable>
-                            );
-                          })}
+                                    <View className="flex-shrink">
+                                      <Text
+                                        className="text-[10px] font-black tracking-tight leading-none text-black"
+                                        numberOfLines={1}
+                                      >
+                                        {item.code}
+                                      </Text>
+                                      {!isShortBlock && (
+                                        <Text
+                                          className="text-[8px] text-black/80 font-semibold mt-0.5 leading-none"
+                                          numberOfLines={1}
+                                        >
+                                          {item.timeDisplay}
+                                        </Text>
+                                      )}
+                                    </View>
+
+                                    {!isShortBlock && item.room && item.room !== "N/A" && (
+                                      <View className="flex-row items-center gap-0.5">
+                                        <Feather name="map-pin" size={7} color="#000000" />
+                                        <Text
+                                          className="text-[8px] text-black font-extrabold uppercase leading-none"
+                                          numberOfLines={1}
+                                        >
+                                          {item.room}
+                                        </Text>
+                                      </View>
+                                    )}
+                                  </Pressable>
+                                );
+                              })}
+                          </View>
+                        ))}
                       </View>
-                    ))}
+                    </ScrollView>
                   </View>
-                </View>
-              </ScrollView>
+                </ScrollView>
+              </View>
             )}
 
             <Pressable className="flex-row items-center justify-center gap-2 bg-brand-gold py-3.5 px-6 rounded-2xl active:opacity-90 shadow-xs">
@@ -822,7 +900,7 @@ export default function Schedule() {
               Days
             </Text>
             <View className="flex-row justify-between mb-3">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => {
+              {ALL_DAYS.map((day) => {
                 const isSelected = selectedDays.includes(day);
                 return (
                   <Pressable
