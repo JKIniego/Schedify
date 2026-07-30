@@ -17,6 +17,7 @@ import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { apiRequest } from "../../utils/api";
+import { CustomAlertModal, AlertState } from "../../utils/alert";
 
 interface CourseAPIResponse {
   id: number;
@@ -323,9 +324,62 @@ export default function Schedule() {
     }
   };
 
+
+
+  const [alertConfig, setAlertConfig] = useState<AlertState>({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    confirmText = "Delete"
+  ) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type: "confirm",
+      onConfirm,
+      confirmText,
+    });
+  };
+
+  const showAlert = (title: string, message?: string) => {
+    setAlertConfig({ visible: true, title, message, type: "alert" });
+  };
+
+  const handleDeleteCourse = (courseId: string) => {
+    showConfirm(
+      "Delete Course",
+      "Are you sure you want to delete this course from your schedule?",
+      async () => {
+        const previousItems = [...scheduleItems];
+        setScheduleItems((prev) => prev.filter((item) => item.id !== courseId));
+
+        const { error } = await apiRequest(`/courses/${courseId}/`, {
+          method: "DELETE",
+        });
+
+        if (error) {
+          showAlert("Delete Failed", error);
+          setScheduleItems(previousItems);
+        }
+      },
+      "Delete"
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       <StatusBar style="light" />
+      <CustomAlertModal
+        state={alertConfig}
+        onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+      />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="bg-brand-navy pt-4 pb-8 items-center">
@@ -593,7 +647,10 @@ export default function Schedule() {
                         >
                           <Feather name="edit-2" size={14} color="#14213D" />
                         </Pressable>
-                        <Pressable className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 items-center justify-center active:bg-red-100">
+                        <Pressable
+                          className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 items-center justify-center active:bg-red-100"
+                          onPress={() => handleDeleteCourse(item.id)}
+                        >
                           <Feather name="trash-2" size={14} color="#DC2626" />
                         </Pressable>
                       </View>
