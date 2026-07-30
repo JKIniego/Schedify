@@ -479,10 +479,6 @@ export default function Schedule() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       <StatusBar style="light" />
-      <CustomAlertModal
-        state={alertConfig}
-        onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
-      />
 
       <ScrollView
         className="flex-1"
@@ -697,6 +693,312 @@ export default function Schedule() {
         animationType="none"
         onRequestClose={closeDrawer}
       >
+        <CustomAlertModal
+          state={alertConfig}
+          onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+        />
+
+        <Modal visible={addCourseModal} transparent animationType="fade" onRequestClose={closeAddCourseModal}>
+          <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
+            <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
+              <Text className="text-brand-navy text-sm font-black uppercase tracking-widest mb-3">
+                {editingCourseId ? "Edit Course" : "Add Course"}
+              </Text>
+
+              {errors.conflict && (
+                <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 flex-row items-center gap-2">
+                  <Feather name="alert-circle" size={16} color="#DC2626" />
+                  <Text className="text-red-600 text-xs font-medium flex-1">
+                    {errors.conflict}
+                  </Text>
+                </View>
+              )}
+
+              <Text className="text-brand-navy text-xs font-black mb-1">
+                Course Name
+              </Text>
+              <TextInput
+                className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+                  errors.courseName ? "border-red-500" : "border-brand-hair"
+                }`}
+                placeholder="Schedule Title (e.g., CS 101)"
+                placeholderTextColor="#A8ADB8"
+                value={courseName}
+                onChangeText={(text) => {
+                  setCourseName(text);
+                  if (errors.courseName || errors.conflict) {
+                    setErrors((prev) => ({ ...prev, courseName: undefined, conflict: undefined }));
+                  }
+                }}
+                autoFocus
+              />
+              {errors.courseName && (
+                <Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
+                  {errors.courseName}
+                </Text>
+              )}
+
+              <View className="relative z-20 mb-3">
+                <Text className="text-brand-navy text-xs font-black mb-1">
+                  Color
+                </Text>
+                
+                <Pressable
+                  className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 flex-row items-center justify-between active:bg-brand-hair/40"
+                  onPress={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
+                >
+                  <View className="flex-row items-center gap-2.5">
+                    <View
+                      style={{ backgroundColor: hexCode }}
+                      className="w-4 h-4 rounded-full border border-black/10"
+                    />
+                    <Text className="text-brand-navy text-xs font-semibold uppercase">
+                      {hexCode}
+                    </Text>
+                  </View>
+
+                  <Feather
+                    name={isColorDropdownOpen ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color="#14213D"
+                  />
+                </Pressable>
+                
+                {isColorDropdownOpen && (
+                  <View className="absolute top-[60px] left-0 right-0 bg-white border border-brand-hair rounded-xl shadow-lg p-3 z-50">
+                    <View className="flex-row flex-wrap gap-2 justify-between">
+                      {COURSE_COLORS.map((color) => {
+                        const isSelected = hexCode === color;
+                        return (
+                          <Pressable
+                            key={color}
+                            style={{ backgroundColor: color }}
+                            className={`w-7 h-7 rounded-lg items-center justify-center border ${
+                              isSelected
+                                ? "border-brand-navy scale-105 shadow-xs"
+                                : "border-black/10 active:opacity-80"
+                            }`}
+                            onPress={() => {
+                              setHexCode(color);
+                              setIsColorDropdownOpen(false);
+                            }}
+                          >
+                            {isSelected && (
+                              <Feather name="check" size={14} color="#14213D" />
+                            )}
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              <Text className="text-brand-navy text-xs font-black mb-1">
+                Days
+              </Text>
+              <View className="flex-row justify-between mb-3">
+                {ALL_DAYS.map((day) => {
+                  const isSelected = selectedDays.includes(day);
+                  return (
+                    <Pressable
+                      key={day}
+                      onPress={() => {
+                        toggleDay(day);
+                        if (errors.selectedDays || errors.conflict) {
+                          setErrors((prev) => ({ ...prev, selectedDays: undefined, conflict: undefined }));
+                        }
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg border ${
+                        isSelected
+                          ? "bg-brand-navy border-brand-navy"
+                          : errors.selectedDays
+                          ? "bg-brand-card border-red-500"
+                          : "bg-brand-card border-brand-hair"
+                      }`}
+                    >
+                      <Text
+                        className={`text-[10px] font-bold ${
+                          isSelected ? "text-white" : "text-brand-slate"
+                        }`}
+                      >
+                        {day}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {errors.selectedDays && (
+                <Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
+                  {errors.selectedDays}
+                </Text>
+              )}
+              
+              <View className="flex-row gap-2 mt-3">
+                <View className="flex-1">
+                  <Text className="text-brand-navy text-xs font-black mb-1">
+                    Start Time
+                  </Text>
+                  <Pressable
+                    className={`bg-brand-card border rounded-xl px-3.5 py-2 flex-row items-center justify-between ${
+                      errors.startTime ? "border-red-500" : "border-brand-hair"
+                    }`}
+                    onPress={() => {
+                      setIsColorDropdownOpen(false);
+                      setShowPickerMode("start");
+                      if (Platform.OS === "web") {
+                        setTimeout(() => webTimeInputRef.current?.showPicker?.(), 50);
+                      }
+                    }}
+                  >
+                    <Text className="text-brand-navy text-xs font-bold">
+                      {formatTimeDisplay(startTime, startTime).split("-")[0] || "08:00 AM"}
+                    </Text>
+                    <Feather name="clock" size={14} color="#14213D" />
+                  </Pressable>
+                  {errors.startTime && (
+                    <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
+                      {errors.startTime}
+                    </Text>
+                  )}
+                </View>
+
+                <View className="flex-1">
+                  <Text className="text-brand-navy text-xs font-black mb-1">
+                    End Time
+                  </Text>
+                  <Pressable
+                    className={`bg-brand-card border rounded-xl px-3.5 py-2 flex-row items-center justify-between ${
+                      errors.endTime ? "border-red-500" : "border-brand-hair"
+                    }`}
+                    onPress={() => {
+                      setIsColorDropdownOpen(false);
+                      setShowPickerMode("end");
+                      if (Platform.OS === "web") {
+                        setTimeout(() => webTimeInputRef.current?.showPicker?.(), 50);
+                      }
+                    }}
+                  >
+                    <Text className="text-brand-navy text-xs font-bold">
+                      {formatTimeDisplay(endTime, endTime).split("-")[0] || "10:00 AM"}
+                    </Text>
+                    <Feather name="clock" size={14} color="#14213D" />
+                  </Pressable>
+                  {errors.endTime && (
+                    <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
+                      {errors.endTime}
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              {showPickerMode && (
+                Platform.OS === 'web' ? (
+                  <input
+                    ref={webTimeInputRef}
+                    type="time"
+                    value={showPickerMode === 'start' ? startTime : endTime}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) {
+                        if (showPickerMode === 'start') {
+                          setStartTime(val);
+                          if (errors.startTime || errors.conflict) {
+                            setErrors((prev) => ({ ...prev, startTime: undefined, conflict: undefined }));
+                          }
+                        } else {
+                          setEndTime(val);
+                          if (errors.endTime || errors.conflict) {
+                            setErrors((prev) => ({ ...prev, endTime: undefined, conflict: undefined }));
+                          }
+                        }
+                      }
+                      setShowPickerMode(null);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      opacity: 0,
+                      pointerEvents: 'none',
+                      width: 0,
+                      height: 0,
+                    }}
+                  />
+                ) : (
+                  <DateTimePicker
+                    value={timeStringToDate(
+                      showPickerMode === "start" ? startTime : endTime
+                    )}
+                    mode="time"
+                    is24Hour={false}
+                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    onChange={(event, selectedDate) => {
+                      setShowPickerMode(null);
+                      if (event.type === "set" && selectedDate) {
+                        const formattedHHMM = dateToHHMM(selectedDate);
+                        if (showPickerMode === "start") {
+                          setStartTime(formattedHHMM);
+                          if (errors.startTime || errors.conflict) {
+                            setErrors((prev) => ({ ...prev, startTime: undefined, conflict: undefined }));
+                          }
+                        } else {
+                          setEndTime(formattedHHMM);
+                          if (errors.endTime || errors.conflict) {
+                            setErrors((prev) => ({ ...prev, endTime: undefined, conflict: undefined }));
+                          }
+                        }
+                      }
+                    }}
+                  />
+                )
+              )}
+
+              <Text className="text-brand-navy text-xs font-black mb-1 mt-3">
+                Room
+              </Text>
+              <TextInput
+                className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+                  errors.room ? "border-red-500" : "border-brand-hair"
+                }`}
+                placeholder="Room Name"
+                placeholderTextColor="#A8ADB8"
+                value={room}
+                onChangeText={(text) => {
+                  setRoom(text);
+                  if (errors.room) setErrors((prev) => ({ ...prev, room: undefined }));
+                }}
+              />
+              {errors.room && (
+                <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
+                  {errors.room}
+                </Text>
+              )}
+
+              <View className="flex-row justify-end gap-2 mt-10">
+                <Pressable
+                  className="px-4 py-2 rounded-full border border-brand-hair bg-white"
+                  onPress={closeAddCourseModal}
+                >
+                  <Text className="text-brand-slate text-xs font-bold uppercase">Cancel</Text>
+                </Pressable>
+
+                <Pressable
+                  className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90 min-w-[70px] items-center"
+                  onPress={handleSaveCourse}
+                  disabled={isAddingCourse}
+                >
+                  {isAddingCourse ? (
+                    <ActivityIndicator size="small" color="#14213D" />
+                  ) : (
+                    <Text className="text-brand-navy text-xs font-black uppercase">
+                      {editingCourseId ? "Save" : "Add"}
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        
         <View style={StyleSheet.absoluteFillObject}>
           <Animated.View
             style={[
@@ -797,307 +1099,6 @@ export default function Schedule() {
               </View>
             </SafeAreaView>
           </Animated.View>
-        </View>
-      </Modal>
-
-      <Modal visible={addCourseModal} transparent animationType="fade" onRequestClose={closeAddCourseModal}>
-        <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
-          <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
-            <Text className="text-brand-navy text-sm font-black uppercase tracking-widest mb-3">
-              {editingCourseId ? "Edit Course" : "Add Course"}
-            </Text>
-
-            {errors.conflict && (
-              <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 flex-row items-center gap-2">
-                <Feather name="alert-circle" size={16} color="#DC2626" />
-                <Text className="text-red-600 text-xs font-medium flex-1">
-                  {errors.conflict}
-                </Text>
-              </View>
-            )}
-
-            <Text className="text-brand-navy text-xs font-black mb-1">
-              Course Name
-            </Text>
-            <TextInput
-              className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
-                errors.courseName ? "border-red-500" : "border-brand-hair"
-              }`}
-              placeholder="Schedule Title (e.g., CS 101)"
-              placeholderTextColor="#A8ADB8"
-              value={courseName}
-              onChangeText={(text) => {
-                setCourseName(text);
-                if (errors.courseName || errors.conflict) {
-                  setErrors((prev) => ({ ...prev, courseName: undefined, conflict: undefined }));
-                }
-              }}
-              autoFocus
-            />
-            {errors.courseName && (
-              <Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
-                {errors.courseName}
-              </Text>
-            )}
-
-            <View className="relative z-20 mb-3">
-              <Text className="text-brand-navy text-xs font-black mb-1">
-                Color
-              </Text>
-              
-              <Pressable
-                className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 flex-row items-center justify-between active:bg-brand-hair/40"
-                onPress={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
-              >
-                <View className="flex-row items-center gap-2.5">
-                  <View
-                    style={{ backgroundColor: hexCode }}
-                    className="w-4 h-4 rounded-full border border-black/10"
-                  />
-                  <Text className="text-brand-navy text-xs font-semibold uppercase">
-                    {hexCode}
-                  </Text>
-                </View>
-
-                <Feather
-                  name={isColorDropdownOpen ? "chevron-up" : "chevron-down"}
-                  size={16}
-                  color="#14213D"
-                />
-              </Pressable>
-              
-              {isColorDropdownOpen && (
-                <View className="absolute top-[60px] left-0 right-0 bg-white border border-brand-hair rounded-xl shadow-lg p-3 z-50">
-                  <View className="flex-row flex-wrap gap-2 justify-between">
-                    {COURSE_COLORS.map((color) => {
-                      const isSelected = hexCode === color;
-                      return (
-                        <Pressable
-                          key={color}
-                          style={{ backgroundColor: color }}
-                          className={`w-7 h-7 rounded-lg items-center justify-center border ${
-                            isSelected
-                              ? "border-brand-navy scale-105 shadow-xs"
-                              : "border-black/10 active:opacity-80"
-                          }`}
-                          onPress={() => {
-                            setHexCode(color);
-                            setIsColorDropdownOpen(false);
-                          }}
-                        >
-                          {isSelected && (
-                            <Feather name="check" size={14} color="#14213D" />
-                          )}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
-            </View>
-
-            <Text className="text-brand-navy text-xs font-black mb-1">
-              Days
-            </Text>
-            <View className="flex-row justify-between mb-3">
-              {ALL_DAYS.map((day) => {
-                const isSelected = selectedDays.includes(day);
-                return (
-                  <Pressable
-                    key={day}
-                    onPress={() => {
-                      toggleDay(day);
-                      if (errors.selectedDays || errors.conflict) {
-                        setErrors((prev) => ({ ...prev, selectedDays: undefined, conflict: undefined }));
-                      }
-                    }}
-                    className={`px-2.5 py-1.5 rounded-lg border ${
-                      isSelected
-                        ? "bg-brand-navy border-brand-navy"
-                        : errors.selectedDays
-                        ? "bg-brand-card border-red-500"
-                        : "bg-brand-card border-brand-hair"
-                    }`}
-                  >
-                    <Text
-                      className={`text-[10px] font-bold ${
-                        isSelected ? "text-white" : "text-brand-slate"
-                      }`}
-                    >
-                      {day}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {errors.selectedDays && (
-              <Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
-                {errors.selectedDays}
-              </Text>
-            )}
-            
-            <View className="flex-row gap-2 mt-3">
-              <View className="flex-1">
-                <Text className="text-brand-navy text-xs font-black mb-1">
-                  Start Time
-                </Text>
-                <Pressable
-                  className={`bg-brand-card border rounded-xl px-3.5 py-2 flex-row items-center justify-between ${
-                    errors.startTime ? "border-red-500" : "border-brand-hair"
-                  }`}
-                  onPress={() => {
-                    setIsColorDropdownOpen(false);
-                    setShowPickerMode("start");
-                    if (Platform.OS === "web") {
-                      setTimeout(() => webTimeInputRef.current?.showPicker?.(), 50);
-                    }
-                  }}
-                >
-                  <Text className="text-brand-navy text-xs font-bold">
-                    {formatTimeDisplay(startTime, startTime).split("-")[0] || "08:00 AM"}
-                  </Text>
-                  <Feather name="clock" size={14} color="#14213D" />
-                </Pressable>
-                {errors.startTime && (
-                  <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
-                    {errors.startTime}
-                  </Text>
-                )}
-              </View>
-
-              <View className="flex-1">
-                <Text className="text-brand-navy text-xs font-black mb-1">
-                  End Time
-                </Text>
-                <Pressable
-                  className={`bg-brand-card border rounded-xl px-3.5 py-2 flex-row items-center justify-between ${
-                    errors.endTime ? "border-red-500" : "border-brand-hair"
-                  }`}
-                  onPress={() => {
-                    setIsColorDropdownOpen(false);
-                    setShowPickerMode("end");
-                    if (Platform.OS === "web") {
-                      setTimeout(() => webTimeInputRef.current?.showPicker?.(), 50);
-                    }
-                  }}
-                >
-                  <Text className="text-brand-navy text-xs font-bold">
-                    {formatTimeDisplay(endTime, endTime).split("-")[0] || "10:00 AM"}
-                  </Text>
-                  <Feather name="clock" size={14} color="#14213D" />
-                </Pressable>
-                {errors.endTime && (
-                  <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
-                    {errors.endTime}
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            {showPickerMode && (
-              Platform.OS === 'web' ? (
-                <input
-                  ref={webTimeInputRef}
-                  type="time"
-                  value={showPickerMode === 'start' ? startTime : endTime}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val) {
-                      if (showPickerMode === 'start') {
-                        setStartTime(val);
-                        if (errors.startTime || errors.conflict) {
-                          setErrors((prev) => ({ ...prev, startTime: undefined, conflict: undefined }));
-                        }
-                      } else {
-                        setEndTime(val);
-                        if (errors.endTime || errors.conflict) {
-                          setErrors((prev) => ({ ...prev, endTime: undefined, conflict: undefined }));
-                        }
-                      }
-                    }
-                    setShowPickerMode(null);
-                  }}
-                  style={{
-                    position: 'absolute',
-                    opacity: 0,
-                    pointerEvents: 'none',
-                    width: 0,
-                    height: 0,
-                  }}
-                />
-              ) : (
-                <DateTimePicker
-                  value={timeStringToDate(
-                    showPickerMode === "start" ? startTime : endTime
-                  )}
-                  mode="time"
-                  is24Hour={false}
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
-                  onChange={(event, selectedDate) => {
-                    setShowPickerMode(null);
-                    if (event.type === "set" && selectedDate) {
-                      const formattedHHMM = dateToHHMM(selectedDate);
-                      if (showPickerMode === "start") {
-                        setStartTime(formattedHHMM);
-                        if (errors.startTime || errors.conflict) {
-                          setErrors((prev) => ({ ...prev, startTime: undefined, conflict: undefined }));
-                        }
-                      } else {
-                        setEndTime(formattedHHMM);
-                        if (errors.endTime || errors.conflict) {
-                          setErrors((prev) => ({ ...prev, endTime: undefined, conflict: undefined }));
-                        }
-                      }
-                    }
-                  }}
-                />
-              )
-            )}
-
-            <Text className="text-brand-navy text-xs font-black mb-1 mt-3">
-              Room
-            </Text>
-            <TextInput
-              className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
-                errors.room ? "border-red-500" : "border-brand-hair"
-              }`}
-              placeholder="Room Name"
-              placeholderTextColor="#A8ADB8"
-              value={room}
-              onChangeText={(text) => {
-                setRoom(text);
-                if (errors.room) setErrors((prev) => ({ ...prev, room: undefined }));
-              }}
-            />
-            {errors.room && (
-              <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
-                {errors.room}
-              </Text>
-            )}
-
-            <View className="flex-row justify-end gap-2 mt-10">
-              <Pressable
-                className="px-4 py-2 rounded-full border border-brand-hair bg-white"
-                onPress={closeAddCourseModal}
-              >
-                <Text className="text-brand-slate text-xs font-bold uppercase">Cancel</Text>
-              </Pressable>
-
-              <Pressable
-                className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90 min-w-[70px] items-center"
-                onPress={handleSaveCourse}
-                disabled={isAddingCourse}
-              >
-                {isAddingCourse ? (
-                  <ActivityIndicator size="small" color="#14213D" />
-                ) : (
-                  <Text className="text-brand-navy text-xs font-black uppercase">
-                    {editingCourseId ? "Save" : "Add"}
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
         </View>
       </Modal>
     </SafeAreaView>
