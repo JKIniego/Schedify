@@ -18,6 +18,8 @@ import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import ViewShot, { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import { apiRequest } from "../../utils/api";
 import { CustomAlertModal, AlertState } from "../../utils/alert";
 
@@ -143,7 +145,10 @@ export default function Schedule() {
 
   const [scheduleItems, setScheduleItems] = useState<GridSlot[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+
+  const viewShotRef = useRef<any>(null);
+
   const { rowHeight, pixelsPerHour } = useMemo(() => {
     if (scheduleItems.length === 0) {
       return { rowHeight: BASE_ROW_HEIGHT, pixelsPerHour: BASE_ROW_HEIGHT };
@@ -152,7 +157,7 @@ export default function Schedule() {
     const minDurationHours = Math.min(
       ...scheduleItems.map((item) => item.durationHours)
     );
-    
+
     if (minDurationHours < 1) {
       const pixelsPerHour = BASE_ROW_HEIGHT / Math.max(minDurationHours, 0.25);
 
@@ -476,6 +481,335 @@ export default function Schedule() {
     return { minHour: min, maxHour: max, dynamicHours: hours };
   }, [scheduleItems, addCourseModal, startTime, endTime]);
 
+  const handleExportImage = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+
+    try {
+      const isWeb = Platform.OS === "web";
+      
+      const result = await captureRef(viewShotRef, {
+        format: "png",
+        quality: 1.0,
+        result: isWeb ? "data-uri" : "tmpfile",
+      });
+      
+      if (isWeb) {
+        const link = document.createElement("a");
+        link.href = result;
+        link.download = "schedule.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+      
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(result, {
+          mimeType: "image/png",
+          dialogTitle: "Export Schedule Table",
+          UTI: "public.png",
+        });
+      } else {
+        showAlert("Sharing Unavailable", "Sharing is not supported on this device.");
+      }
+    } catch (err: any) {
+      showAlert("Export Failed", err.message || "An error occurred while generating image.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const gridContentHeight = dynamicHours.length * rowHeight;
+
+  const renderGridContent = () => (
+    <View style={{ width: totalGridWidth }}>
+      <View className="flex-row bg-brand-navy border-b border-brand-hair z-10">
+        <View
+          style={{ width: timeColWidth }}
+          className="p-2 items-center justify-center border-r border-white/10"
+        >
+          <Feather name="clock" size={12} color="#C9A227" />
+        </View>
+
+        {activeDays.map((day) => (
+          <View
+            key={day}
+            style={{ width: dayColWidth }}
+            className="py-2.5 items-center justify-center border-r border-white/10"
+          >
+            <Text className="text-white text-xs font-black uppercase tracking-wider">
+              {day}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View className="flex-row relative" style={{ height: gridContentHeight }}>
+        <View
+          style={{ width: timeColWidth }}
+          className="border-r border-brand-hair bg-brand-card/40"
+        >
+          {dynamicHours.map((hour) => (
+            <View
+              key={hour}
+              style={{ height: rowHeight }}
+              className="border-b border-brand-hair/60 justify-start pt-1 items-center"
+            >
+              <Text className="text-[10px] text-brand-slate font-bold">
+                {formatHourLabel(hour)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {activeDays.map((day) => (
+          <View
+            key={day}
+            style={{ width: dayColWidth }}
+            className="border-r border-brand-hair relative"
+          >
+            {dynamicHours.map((hour) => (
+              <View
+                key={hour}
+                style={{ height: rowHeight }}
+                className="border-b border-brand-hair/30"
+              />
+            ))}
+
+            {scheduleItems
+              .filter((item) => item.days.includes(day as any))
+              .map((item) => {
+                const topOffset = (item.startHour - minHour) * pixelsPerHour;
+                const blockHeight = item.durationHours * pixelsPerHour;
+                const isShortBlock = blockHeight < 36;
+
+                return (
+                  <Pressable
+                    key={`${item.id}-${day}`}
+                    style={{
+                      position: "absolute",
+                      top: topOffset + 1,
+                      left: 1,
+                      right: 1,
+                      height: Math.max(blockHeight - 2, 20),
+                      backgroundColor: item.bgColor,
+                    }}
+                    className={`border border-black/10 rounded-md overflow-hidden ${
+                      isShortBlock ? "px-1 py-0.5 justify-center" : "p-1.5 justify-between"
+                    } shadow-xs active:opacity-90`}
+                  >
+                    <View className="flex-shrink">
+                      <Text
+                        className="text-[10px] font-black tracking-tight leading-none text-black"
+                        numberOfLines={1}
+                      >
+                        {item.code}
+                      </Text>
+                      {!isShortBlock && (
+                        <Text
+                          className="text-[8px] text-black/80 font-semibold mt-0.5 leading-none"
+                          numberOfLines={1}
+                        >
+                          {item.timeDisplay}
+                        </Text>
+                      )}
+                    </View>
+
+                    {!isShortBlock && item.room && item.room !== "N/A" && (
+                      <View className="flex-row items-center gap-0.5">
+                        <Feather name="map-pin" size={7} color="#000000" />
+                        <Text
+                          className="text-[8px] text-black font-extrabold uppercase leading-none"
+                          numberOfLines={1}
+                        >
+                          {item.room}
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderExportGridContent = () => (
+    <View style={{ width: totalGridWidth }}>
+      <View style={{ flexDirection: "row", backgroundColor: "#14213D", borderBottomWidth: 1, borderColor: "#E5E7EB" }}>
+        <View
+          style={{
+            width: timeColWidth,
+            padding: 8,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRightWidth: 1,
+            borderColor: "rgba(255,255,255,0.1)",
+          }}
+        >
+          <Text style={{ fontSize: 10, color: "#C9A227" }}>🕒</Text>
+        </View>
+
+        {activeDays.map((day) => (
+          <View
+            key={day}
+            style={{
+              width: dayColWidth,
+              paddingVertical: 10,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRightWidth: 1,
+              borderColor: "rgba(255,255,255,0.1)",
+            }}
+          >
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 11,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                lineHeight: 14,
+                ...(Platform.OS === "web" ? { display: "block" as any } : {}),
+              }}
+            >
+              {day}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={{ flexDirection: "row", position: "relative", height: gridContentHeight }}>
+        <View
+          style={{
+            width: timeColWidth,
+            borderRightWidth: 1,
+            borderColor: "#E5E7EB",
+            backgroundColor: "rgba(244, 245, 247, 0.4)",
+          }}
+        >
+          {dynamicHours.map((hour) => (
+            <View
+              key={hour}
+              style={{
+                height: rowHeight,
+                borderBottomWidth: 1,
+                borderColor: "rgba(229, 231, 235, 0.6)",
+                justifyContent: "flex-start",
+                paddingTop: 4,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 10,
+                  color: "#6B7280",
+                  fontWeight: "700",
+                  lineHeight: 12,
+                  ...(Platform.OS === "web" ? { display: "block" as any } : {}),
+                }}
+              >
+                {formatHourLabel(hour)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {activeDays.map((day) => (
+          <View
+            key={day}
+            style={{ width: dayColWidth, borderRightWidth: 1, borderColor: "#E5E7EB", position: "relative" }}
+          >
+            {dynamicHours.map((hour) => (
+              <View
+                key={hour}
+                style={{ height: rowHeight, borderBottomWidth: 1, borderColor: "rgba(229, 231, 235, 0.3)" }}
+              />
+            ))}
+
+            {scheduleItems
+              .filter((item) => item.days.includes(day as any))
+              .map((item) => {
+                const topOffset = (item.startHour - minHour) * pixelsPerHour;
+                const blockHeight = item.durationHours * pixelsPerHour;
+                const isShortBlock = blockHeight < 36;
+
+                return (
+                  <View
+                    key={`export-${item.id}-${day}`}
+                    style={{
+                      position: "absolute",
+                      top: topOffset + 1,
+                      left: 1,
+                      right: 1,
+                      height: Math.max(blockHeight - 2, 20),
+                      backgroundColor: item.bgColor,
+                      borderWidth: 1,
+                      borderColor: "rgba(0,0,0,0.1)",
+                      borderRadius: 6,
+                      padding: isShortBlock ? 2 : 6,
+                      justifyContent: isShortBlock ? "center" : "space-between",
+                    }}
+                  >
+                    <View>
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "900",
+                          color: "#000000",
+                          lineHeight: 13,
+                          height: 13,
+                          ...(Platform.OS === "web" ? { display: "block" as any } : {}),
+                        }}
+                      >
+                        {item.code}
+                      </Text>
+                      {!isShortBlock && (
+                        <Text
+                          style={{
+                            fontSize: 8,
+                            fontWeight: "600",
+                            color: "rgba(0,0,0,0.8)",
+                            marginTop: 2,
+                            lineHeight: 10,
+                            height: 10,
+                            ...(Platform.OS === "web" ? { display: "block" as any } : {}),
+                          }}
+                        >
+                          {item.timeDisplay}
+                        </Text>
+                      )}
+                    </View>
+
+                    {!isShortBlock && item.room && item.room !== "N/A" && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                        <Text style={{ fontSize: 7, lineHeight: 9 }}>📍</Text>
+                        <Text
+                          style={{
+                            fontSize: 8,
+                            fontWeight: "800",
+                            color: "#000000",
+                            textTransform: "uppercase",
+                            lineHeight: 10,
+                            height: 10,
+                            ...(Platform.OS === "web" ? { display: "block" as any } : {}),
+                          }}
+                        >
+                          {item.room}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       <StatusBar style="light" />
@@ -556,137 +890,93 @@ export default function Schedule() {
                   showsHorizontalScrollIndicator={true}
                   nestedScrollEnabled={true}
                 >
-                  <View style={{ width: totalGridWidth }}>
-                    <View className="flex-row bg-brand-navy border-b border-brand-hair z-10">
-                      <View
-                        style={{ width: timeColWidth }}
-                        className="p-2 items-center justify-center border-r border-white/10"
-                      >
-                        <Feather name="clock" size={12} color="#C9A227" />
-                      </View>
-
-                      {activeDays.map((day) => (
-                        <View
-                          key={day}
-                          style={{ width: dayColWidth }}
-                          className="py-2.5 items-center justify-center border-r border-white/10"
-                        >
-                          <Text className="text-white text-xs font-black uppercase tracking-wider">
-                            {day}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                    
-                    <ScrollView
-                      style={{ height: 600 }}
-                      nestedScrollEnabled={true}
-                      showsVerticalScrollIndicator={true}
-                    >
-                      <View className="flex-row relative">
-                        <View
-                          style={{ width: timeColWidth }}
-                          className="border-r border-brand-hair bg-brand-card/40"
-                        >
-                          {dynamicHours.map((hour) => (
-                            <View
-                              key={hour}
-                              style={{ height: rowHeight }}
-                              className="border-b border-brand-hair/60 justify-start pt-1 items-center"
-                            >
-                              <Text className="text-[10px] text-brand-slate font-bold">
-                                {formatHourLabel(hour)}
-                              </Text>
-                            </View>
-                          ))}
-                        </View>
-                        
-                        {activeDays.map((day) => (
-                          <View
-                            key={day}
-                            style={{ width: dayColWidth }}
-                            className="border-r border-brand-hair relative"
-                          >
-                            {dynamicHours.map((hour) => (
-                              <View
-                                key={hour}
-                                style={{ height: rowHeight }}
-                                className="border-b border-brand-hair/30"
-                              />
-                            ))}
-
-                            {scheduleItems
-                              .filter((item) => item.days.includes(day as any))
-                              .map((item) => {
-                                const topOffset = (item.startHour - minHour) * pixelsPerHour;
-                                const blockHeight = item.durationHours * pixelsPerHour;
-                                const isShortBlock = blockHeight < 36;
-
-                                return (
-                                  <Pressable
-                                    key={`${item.id}-${day}`}
-                                    style={{
-                                      position: "absolute",
-                                      top: topOffset + 1,
-                                      left: 1,
-                                      right: 1,
-                                      height: Math.max(blockHeight - 2, 20),
-                                      backgroundColor: item.bgColor,
-                                    }}
-                                    className={`border border-black/10 rounded-md overflow-hidden ${
-                                      isShortBlock ? "px-1 py-0.5 justify-center" : "p-1.5 justify-between"
-                                    } shadow-xs active:opacity-90`}
-                                  >
-                                    <View className="flex-shrink">
-                                      <Text
-                                        className="text-[10px] font-black tracking-tight leading-none text-black"
-                                        numberOfLines={1}
-                                      >
-                                        {item.code}
-                                      </Text>
-                                      {!isShortBlock && (
-                                        <Text
-                                          className="text-[8px] text-black/80 font-semibold mt-0.5 leading-none"
-                                          numberOfLines={1}
-                                        >
-                                          {item.timeDisplay}
-                                        </Text>
-                                      )}
-                                    </View>
-
-                                    {!isShortBlock && item.room && item.room !== "N/A" && (
-                                      <View className="flex-row items-center gap-0.5">
-                                        <Feather name="map-pin" size={7} color="#000000" />
-                                        <Text
-                                          className="text-[8px] text-black font-extrabold uppercase leading-none"
-                                          numberOfLines={1}
-                                        >
-                                          {item.room}
-                                        </Text>
-                                      </View>
-                                    )}
-                                  </Pressable>
-                                );
-                              })}
-                          </View>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  </View>
+                  <ScrollView
+                    style={{ maxHeight: 600 }}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                  >
+                    {renderGridContent()}
+                  </ScrollView>
                 </ScrollView>
               </View>
             )}
 
-            <Pressable className="flex-row items-center justify-center gap-2 bg-brand-gold py-3.5 px-6 rounded-2xl active:opacity-90 shadow-xs">
-              <Feather name="image" size={16} color="#14213D" />
-              <Text className="text-brand-navy text-xs font-black uppercase tracking-wider">
-                Export Schedule as Image
-              </Text>
+            <Pressable
+              className="flex-row items-center justify-center gap-2 bg-brand-gold py-3.5 px-6 rounded-2xl active:opacity-90 shadow-xs"
+              onPress={handleExportImage}
+              disabled={isExporting || loading}
+            >
+              {isExporting ? (
+                <ActivityIndicator size="small" color="#14213D" />
+              ) : (
+                <>
+                  <Feather name="image" size={16} color="#14213D" />
+                  <Text className="text-brand-navy text-xs font-black uppercase tracking-wider">
+                    Export Schedule as PNG
+                  </Text>
+                </>
+              )}
             </Pressable>
           </View>
         </View>
       </ScrollView>
-      
+
+      {!loading && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            height: 0,
+            width: 0,
+            overflow: "hidden",
+          }}
+          pointerEvents="none"
+        >
+          <ViewShot
+            ref={viewShotRef}
+            options={{ format: "png", quality: 1.0 }}
+            style={{
+              backgroundColor: "#FFFFFF",
+              padding: 24,
+              width: totalGridWidth + 48,
+            }}
+          >
+            <View style={{ marginBottom: 16, alignItems: "center" }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "900",
+                  color: "#14213D",
+                  lineHeight: 22,
+                  height: 22,
+                  ...(Platform.OS === "web" ? { display: "block" as any } : {}),
+                }}
+              >
+                SCHEDIFY
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: "#14213D",
+                  marginTop: 4,
+                  lineHeight: 18,
+                  height: 18,
+                  ...(Platform.OS === "web" ? { display: "block" as any } : {}),
+                }}
+              >
+                1st Sem 2026 Schedule
+              </Text>
+            </View>
+
+            <View style={{ borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", overflow: "hidden" }}>
+              {renderExportGridContent()}
+            </View>
+          </ViewShot>
+        </View>
+      )}
+
       <Modal
         visible={drawerVisible}
         transparent={true}
@@ -742,7 +1032,7 @@ export default function Schedule() {
                 <Text className="text-brand-navy text-xs font-black mb-1">
                   Color
                 </Text>
-                
+
                 <Pressable
                   className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 flex-row items-center justify-between active:bg-brand-hair/40"
                   onPress={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
@@ -763,7 +1053,7 @@ export default function Schedule() {
                     color="#14213D"
                   />
                 </Pressable>
-                
+
                 {isColorDropdownOpen && (
                   <View className="absolute top-[60px] left-0 right-0 bg-white border border-brand-hair rounded-xl shadow-lg p-3 z-50">
                     <View className="flex-row flex-wrap gap-2 justify-between">
@@ -833,7 +1123,7 @@ export default function Schedule() {
                   {errors.selectedDays}
                 </Text>
               )}
-              
+
               <View className="flex-row gap-2 mt-3">
                 <View className="flex-1">
                   <Text className="text-brand-navy text-xs font-black mb-1">
@@ -893,15 +1183,15 @@ export default function Schedule() {
               </View>
 
               {showPickerMode && (
-                Platform.OS === 'web' ? (
+                Platform.OS === "web" ? (
                   <input
                     ref={webTimeInputRef}
                     type="time"
-                    value={showPickerMode === 'start' ? startTime : endTime}
+                    value={showPickerMode === "start" ? startTime : endTime}
                     onChange={(e) => {
                       const val = e.target.value;
                       if (val) {
-                        if (showPickerMode === 'start') {
+                        if (showPickerMode === "start") {
                           setStartTime(val);
                           if (errors.startTime || errors.conflict) {
                             setErrors((prev) => ({ ...prev, startTime: undefined, conflict: undefined }));
@@ -916,9 +1206,9 @@ export default function Schedule() {
                       setShowPickerMode(null);
                     }}
                     style={{
-                      position: 'absolute',
+                      position: "absolute",
                       opacity: 0,
-                      pointerEvents: 'none',
+                      pointerEvents: "none",
                       width: 0,
                       height: 0,
                     }}
@@ -998,7 +1288,7 @@ export default function Schedule() {
             </View>
           </View>
         </Modal>
-        
+
         <View style={StyleSheet.absoluteFillObject}>
           <Animated.View
             style={[
