@@ -11,11 +11,13 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { apiRequest } from "../../utils/api";
 import { CustomAlertModal, AlertState } from "../../utils/alert";
 
@@ -92,6 +94,23 @@ const formatTimeDisplay = (startStr: string, endStr: string): string => {
   return `${formatSingle(startStr)}-${formatSingle(endStr)}`;
 };
 
+const timeStringToDate = (timeStr: string): Date => {
+  const date = new Date();
+  if (!timeStr) {
+    date.setHours(8, 0, 0, 0);
+    return date;
+  }
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  date.setHours(hours || 0, minutes || 0, 0, 0);
+  return date;
+};
+
+const dateToHHMM = (date: Date): string => {
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
 const parseDays = (
   days: CourseAPIResponse["days"]
 ): ("Mon" | "Tue" | "Wed" | "Thu" | "Fri")[] => {
@@ -149,6 +168,8 @@ export default function Schedule() {
   const drawerWidth = Math.min(width * 0.85, 320);
   const slideAnim = useRef(new Animated.Value(drawerWidth)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const webTimeInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (scheduleId) {
@@ -210,8 +231,9 @@ export default function Schedule() {
   const [courseName, setCourseName] = useState<string>("");
   const [room, setRoom] = useState<string>("");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [startTime, setStartTime] = useState<string>("");
-  const [endTime, setEndTime] = useState<string>("");
+  const [startTime, setStartTime] = useState<string>("08:00");
+  const [endTime, setEndTime] = useState<string>("10:00");
+  const [showPickerMode, setShowPickerMode] = useState<"start" | "end" | null>(null);
   const [hexCode, setHexCode] = useState<string>("#A5D6A7");
   const [isAddingCourse, setIsAddingCourse] = useState<boolean>(false);
   const [errors, setErrors] = useState<{
@@ -228,8 +250,9 @@ export default function Schedule() {
     setCourseName("");
     setRoom("");
     setSelectedDays([]);
-    setStartTime("");
-    setEndTime("");
+    setStartTime("08:00");
+    setEndTime("10:00");
+    setShowPickerMode(null);
     setHexCode("#A5D6A7");
     setIsColorDropdownOpen(false);
     setErrors({});
@@ -240,8 +263,8 @@ export default function Schedule() {
     setCourseName(item.title);
     setRoom(item.room === "N/A" ? "" : item.room);
     setSelectedDays(item.days);
-    setStartTime(item.rawStartTime);
-    setEndTime(item.rawEndTime);
+    setStartTime(item.rawStartTime || "08:00");
+    setEndTime(item.rawEndTime || "10:00");
     setHexCode(item.bgColor);
     setAddCourseModal(true);
   };
@@ -266,11 +289,15 @@ export default function Schedule() {
     if (selectedDays.length === 0) {
       newErrors.selectedDays = "Select at least one day.";
     }
-    if (!startTime.trim()) {
+    if (!startTime) {
       newErrors.startTime = "Start time is required.";
     }
-    if (!endTime.trim()) {
+    if (!endTime) {
       newErrors.endTime = "End time is required.";
+    }
+
+    if (startTime && endTime && parseTimeToDecimal(startTime) >= parseTimeToDecimal(endTime)) {
+      newErrors.endTime = "End time must be after start time.";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -323,8 +350,6 @@ export default function Schedule() {
       closeAddCourseModal();
     }
   };
-
-
 
   const [alertConfig, setAlertConfig] = useState<AlertState>({
     visible: false,
@@ -797,24 +822,29 @@ export default function Schedule() {
                 {errors.selectedDays}
               </Text>
             )}
-
+            
             <View className="flex-row gap-2 mt-3">
               <View className="flex-1">
                 <Text className="text-brand-navy text-xs font-black mb-1">
                   Start Time
                 </Text>
-                <TextInput
-                  className={`bg-brand-card border rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium ${
+                <Pressable
+                  className={`bg-brand-card border rounded-xl px-3.5 py-2 flex-row items-center justify-between ${
                     errors.startTime ? "border-red-500" : "border-brand-hair"
                   }`}
-                  placeholder="08:00"
-                  placeholderTextColor="#A8ADB8"
-                  value={startTime}
-                  onChangeText={(text) => {
-                    setStartTime(text);
-                    if (errors.startTime) setErrors((prev) => ({ ...prev, startTime: undefined }));
+                  onPress={() => {
+                    setIsColorDropdownOpen(false);
+                    setShowPickerMode("start");
+                    if (Platform.OS === "web") {
+                      setTimeout(() => webTimeInputRef.current?.showPicker?.(), 50);
+                    }
                   }}
-                />
+                >
+                  <Text className="text-brand-navy text-xs font-bold">
+                    {formatTimeDisplay(startTime, startTime).split("-")[0] || "08:00 AM"}
+                  </Text>
+                  <Feather name="clock" size={14} color="#14213D" />
+                </Pressable>
                 {errors.startTime && (
                   <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
                     {errors.startTime}
@@ -826,18 +856,23 @@ export default function Schedule() {
                 <Text className="text-brand-navy text-xs font-black mb-1">
                   End Time
                 </Text>
-                <TextInput
-                  className={`bg-brand-card border rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium ${
+                <Pressable
+                  className={`bg-brand-card border rounded-xl px-3.5 py-2 flex-row items-center justify-between ${
                     errors.endTime ? "border-red-500" : "border-brand-hair"
                   }`}
-                  placeholder="10:00"
-                  placeholderTextColor="#A8ADB8"
-                  value={endTime}
-                  onChangeText={(text) => {
-                    setEndTime(text);
-                    if (errors.endTime) setErrors((prev) => ({ ...prev, endTime: undefined }));
+                  onPress={() => {
+                    setIsColorDropdownOpen(false);
+                    setShowPickerMode("end");
+                    if (Platform.OS === "web") {
+                      setTimeout(() => webTimeInputRef.current?.showPicker?.(), 50);
+                    }
                   }}
-                />
+                >
+                  <Text className="text-brand-navy text-xs font-bold">
+                    {formatTimeDisplay(endTime, endTime).split("-")[0] || "10:00 AM"}
+                  </Text>
+                  <Feather name="clock" size={14} color="#14213D" />
+                </Pressable>
                 {errors.endTime && (
                   <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
                     {errors.endTime}
@@ -845,6 +880,62 @@ export default function Schedule() {
                 )}
               </View>
             </View>
+
+            {showPickerMode && (
+              Platform.OS === 'web' ? (
+                <input
+                  ref={webTimeInputRef}
+                  type="time"
+                  value={showPickerMode === 'start' ? startTime : endTime}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) {
+                      if (showPickerMode === 'start') {
+                        setStartTime(val);
+                        if (errors.startTime)
+                          setErrors((prev) => ({ ...prev, startTime: undefined }));
+                      } else {
+                        setEndTime(val);
+                        if (errors.endTime)
+                          setErrors((prev) => ({ ...prev, endTime: undefined }));
+                      }
+                    }
+                    setShowPickerMode(null);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    width: 0,
+                    height: 0,
+                  }}
+                />
+              ) : (
+                <DateTimePicker
+                  value={timeStringToDate(
+                    showPickerMode === "start" ? startTime : endTime
+                  )}
+                  mode="time"
+                  is24Hour={false}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(event, selectedDate) => {
+                    setShowPickerMode(null);
+                    if (event.type === "set" && selectedDate) {
+                      const formattedHHMM = dateToHHMM(selectedDate);
+                      if (showPickerMode === "start") {
+                        setStartTime(formattedHHMM);
+                        if (errors.startTime)
+                          setErrors((prev) => ({ ...prev, startTime: undefined }));
+                      } else {
+                        setEndTime(formattedHHMM);
+                        if (errors.endTime)
+                          setErrors((prev) => ({ ...prev, endTime: undefined }));
+                      }
+                    }
+                  }}
+                />
+              )
+            )}
 
             <Text className="text-brand-navy text-xs font-black mb-1 mt-3">
               Room
