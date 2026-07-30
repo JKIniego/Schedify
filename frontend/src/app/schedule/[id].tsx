@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   ScrollView,
   Text,
-	TextInput,
+  TextInput,
   useWindowDimensions,
   View,
   Pressable,
@@ -38,6 +38,8 @@ interface GridSlot {
   durationHours: number;
   timeDisplay: string;
   bgColor: string;
+  rawStartTime: string;
+  rawEndTime: string;
 }
 
 const HOURS = [
@@ -118,6 +120,8 @@ const mapApiToGridSlot = (course: CourseAPIResponse): GridSlot => {
     durationHours: duration,
     timeDisplay: formatTimeDisplay(course.start_time, course.end_time),
     bgColor: course.hex_code || "#A5D6A7",
+    rawStartTime: course.start_time || "",
+    rawEndTime: course.end_time || "",
   };
 };
 
@@ -198,52 +202,60 @@ export default function Schedule() {
     ]).start(() => setDrawerVisible(false));
   };
 
-	const [isColorDropdownOpen, setIsColorDropdownOpen] = useState(false);
-
-
-
-
-
+  const [isColorDropdownOpen, setIsColorDropdownOpen] = useState(false);
 
   const [addCourseModal, setAddCourseModal] = useState(false);
-	const [courseName, setCourseName] = useState<string>("");
-	const [room, setRoom] = useState<string>("");
-	const [selectedDays, setSelectedDays] = useState<string[]>([]);
-	const [startTime, setStartTime] = useState<string>("");
-	const [endTime, setEndTime] = useState<string>("");
-	const [hexCode, setHexCode] = useState<string>("#A5D6A7");
-	const [isAddingCourse, setIsAddingCourse] = useState<boolean>(false);
-	const [errors, setErrors] = useState<{
-		courseName?: string;
-		room?: string;
-		selectedDays?: string;
-		startTime?: string;
-		endTime?: string;
-	}>({});
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const [courseName, setCourseName] = useState<string>("");
+  const [room, setRoom] = useState<string>("");
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
+  const [hexCode, setHexCode] = useState<string>("#A5D6A7");
+  const [isAddingCourse, setIsAddingCourse] = useState<boolean>(false);
+  const [errors, setErrors] = useState<{
+    courseName?: string;
+    room?: string;
+    selectedDays?: string;
+    startTime?: string;
+    endTime?: string;
+  }>({});
 
   const closeAddCourseModal = () => {
     setAddCourseModal(false);
-		setCourseName("");
-		setRoom("");
-		setSelectedDays([]);
-		setStartTime("");
-		setEndTime("");
-		setHexCode("#A5D6A7");
-		setIsColorDropdownOpen(false);
-		setErrors({});
-  }
+    setEditingCourseId(null);
+    setCourseName("");
+    setRoom("");
+    setSelectedDays([]);
+    setStartTime("");
+    setEndTime("");
+    setHexCode("#A5D6A7");
+    setIsColorDropdownOpen(false);
+    setErrors({});
+  };
 
-	const toggleDay = (day: string) => {
-		if (selectedDays.includes(day)) {
-			setSelectedDays(selectedDays.filter((d) => d !== day));
-		} else {
-			setSelectedDays([...selectedDays, day]);
-		}
-	};
+  const handleOpenEditModal = (item: GridSlot) => {
+    setEditingCourseId(item.id);
+    setCourseName(item.title);
+    setRoom(item.room === "N/A" ? "" : item.room);
+    setSelectedDays(item.days);
+    setStartTime(item.rawStartTime);
+    setEndTime(item.rawEndTime);
+    setHexCode(item.bgColor);
+    setAddCourseModal(true);
+  };
 
-	const handleAddCourse = async () => {
+  const toggleDay = (day: string) => {
+    if (selectedDays.includes(day)) {
+      setSelectedDays(selectedDays.filter((d) => d !== day));
+    } else {
+      setSelectedDays([...selectedDays, day]);
+    }
+  };
+
+  const handleSaveCourse = async () => {
     const newErrors: typeof errors = {};
-    
+
     if (!courseName.trim()) {
       newErrors.courseName = "Course name is required.";
     }
@@ -267,31 +279,46 @@ export default function Schedule() {
 
     setErrors({});
     setIsAddingCourse(true);
-    
-    const { data, error } = await apiRequest<CourseAPIResponse>(`/classes/${scheduleId}/courses/`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          name: courseName.trim(),
-          room: room.trim(),
-          days: selectedDays,
-          start_time: startTime.trim(),
-          end_time: endTime.trim(),
-          hex_code: hexCode,
-        }),
-      }
-    );
+
+    const isEditing = Boolean(editingCourseId);
+    const endpoint = isEditing
+      ? `/courses/${editingCourseId}/`
+      : `/classes/${scheduleId}/courses/`;
+    const method = isEditing ? "PATCH" : "POST";
+
+    const { data, error } = await apiRequest<CourseAPIResponse>(endpoint, {
+      method,
+      body: JSON.stringify({
+        name: courseName.trim(),
+        room: room.trim(),
+        days: selectedDays,
+        start_time: startTime.trim(),
+        end_time: endTime.trim(),
+        hex_code: hexCode,
+      }),
+    });
 
     setIsAddingCourse(false);
 
     if (error) {
-      Alert.alert("Error Creating Course", error);
+      Alert.alert(
+        isEditing ? "Error Updating Course" : "Error Creating Course",
+        error
+      );
       return;
     }
 
     if (data) {
-      const newGridSlot = mapApiToGridSlot(data);
-      setScheduleItems((prev) => [...prev, newGridSlot]);
+      const updatedSlot = mapApiToGridSlot(data);
+
+      if (isEditing) {
+        setScheduleItems((prev) =>
+          prev.map((item) => (item.id === editingCourseId ? updatedSlot : item))
+        );
+      } else {
+        setScheduleItems((prev) => [...prev, updatedSlot]);
+      }
+
       closeAddCourseModal();
     }
   };
@@ -560,7 +587,10 @@ export default function Schedule() {
                       </View>
 
                       <View className="flex-row items-center gap-1.5">
-                        <Pressable className="w-8 h-8 rounded-lg bg-white border border-brand-hair items-center justify-center active:bg-brand-hair">
+                        <Pressable 
+                          className="w-8 h-8 rounded-lg bg-white border border-brand-hair items-center justify-center active:bg-brand-hair"
+                          onPress={() => handleOpenEditModal(item)}
+                        >
                           <Feather name="edit-2" size={14} color="#14213D" />
                         </Pressable>
                         <Pressable className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 items-center justify-center active:bg-red-100">
@@ -574,9 +604,9 @@ export default function Schedule() {
 
               <View className="p-4 border-t border-brand-hair bg-white">
                 <Pressable
-									className="flex-row items-center justify-center gap-2 bg-brand-navy py-3 px-4 rounded-xl active:opacity-90"
-									onPress={() => setAddCourseModal(true)}
-								>
+                  className="flex-row items-center justify-center gap-2 bg-brand-navy py-3 px-4 rounded-xl active:opacity-90"
+                  onPress={() => setAddCourseModal(true)}
+                >
                   <Feather name="plus" size={16} color="#FFFFFF" />
                   <Text className="text-white text-xs font-bold uppercase tracking-wider">
                     Add New Course
@@ -589,219 +619,221 @@ export default function Schedule() {
       </Modal>
 
       <Modal visible={addCourseModal} transparent animationType="fade" onRequestClose={closeAddCourseModal}>
-				<View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
-					<View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
-						<Text className="text-brand-navy text-sm font-black uppercase tracking-widest mb-3">
-							Add Course
-						</Text>
+        <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
+          <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
+            <Text className="text-brand-navy text-sm font-black uppercase tracking-widest mb-3">
+              {editingCourseId ? "Edit Course" : "Add Course"}
+            </Text>
 
-						<Text className="text-brand-navy text-xs font-black mb-1">
-							Course Name
-						</Text>
-						<TextInput
-							className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
-								errors.courseName ? "border-red-500" : "border-brand-hair"
-							}`}
-							placeholder="Schedule Title (e.g., CS 101)"
-							placeholderTextColor="#A8ADB8"
-							value={courseName}
-							onChangeText={(text) => {
-								setCourseName(text);
-								if (errors.courseName) setErrors((prev) => ({ ...prev, courseName: undefined }));
-							}}
-							autoFocus
-						/>
-						{errors.courseName && (
-							<Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
-								{errors.courseName}
-							</Text>
-						)}
+            <Text className="text-brand-navy text-xs font-black mb-1">
+              Course Name
+            </Text>
+            <TextInput
+              className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+                errors.courseName ? "border-red-500" : "border-brand-hair"
+              }`}
+              placeholder="Schedule Title (e.g., CS 101)"
+              placeholderTextColor="#A8ADB8"
+              value={courseName}
+              onChangeText={(text) => {
+                setCourseName(text);
+                if (errors.courseName) setErrors((prev) => ({ ...prev, courseName: undefined }));
+              }}
+              autoFocus
+            />
+            {errors.courseName && (
+              <Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
+                {errors.courseName}
+              </Text>
+            )}
 
-						<View className="relative z-20 mb-3">
-							<Text className="text-brand-navy text-xs font-black mb-1">
-								Color
-							</Text>
-							
-							<Pressable
-								className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 flex-row items-center justify-between active:bg-brand-hair/40"
-								onPress={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
-							>
-								<View className="flex-row items-center gap-2.5">
-									<View
-										style={{ backgroundColor: hexCode }}
-										className="w-4 h-4 rounded-full border border-black/10"
-									/>
-									<Text className="text-brand-navy text-xs font-semibold uppercase">
-										{hexCode}
-									</Text>
-								</View>
+            <View className="relative z-20 mb-3">
+              <Text className="text-brand-navy text-xs font-black mb-1">
+                Color
+              </Text>
+              
+              <Pressable
+                className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 flex-row items-center justify-between active:bg-brand-hair/40"
+                onPress={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
+              >
+                <View className="flex-row items-center gap-2.5">
+                  <View
+                    style={{ backgroundColor: hexCode }}
+                    className="w-4 h-4 rounded-full border border-black/10"
+                  />
+                  <Text className="text-brand-navy text-xs font-semibold uppercase">
+                    {hexCode}
+                  </Text>
+                </View>
 
-								<Feather
-									name={isColorDropdownOpen ? "chevron-up" : "chevron-down"}
-									size={16}
-									color="#14213D"
-								/>
-							</Pressable>
-							
-							{isColorDropdownOpen && (
-								<View className="absolute top-[60px] left-0 right-0 bg-white border border-brand-hair rounded-xl shadow-lg p-3 z-50">
-									<View className="flex-row flex-wrap gap-2 justify-between">
-										{COURSE_COLORS.map((color) => {
-											const isSelected = hexCode === color;
-											return (
-												<Pressable
-													key={color}
-													style={{ backgroundColor: color }}
-													className={`w-7 h-7 rounded-lg items-center justify-center border ${
-														isSelected
-															? "border-brand-navy scale-105 shadow-xs"
-															: "border-black/10 active:opacity-80"
-													}`}
-													onPress={() => {
-														setHexCode(color);
-														setIsColorDropdownOpen(false);
-													}}
-												>
-													{isSelected && (
-														<Feather name="check" size={14} color="#14213D" />
-													)}
-												</Pressable>
-											);
-										})}
-									</View>
-								</View>
-							)}
-						</View>
+                <Feather
+                  name={isColorDropdownOpen ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color="#14213D"
+                />
+              </Pressable>
+              
+              {isColorDropdownOpen && (
+                <View className="absolute top-[60px] left-0 right-0 bg-white border border-brand-hair rounded-xl shadow-lg p-3 z-50">
+                  <View className="flex-row flex-wrap gap-2 justify-between">
+                    {COURSE_COLORS.map((color) => {
+                      const isSelected = hexCode === color;
+                      return (
+                        <Pressable
+                          key={color}
+                          style={{ backgroundColor: color }}
+                          className={`w-7 h-7 rounded-lg items-center justify-center border ${
+                            isSelected
+                              ? "border-brand-navy scale-105 shadow-xs"
+                              : "border-black/10 active:opacity-80"
+                          }`}
+                          onPress={() => {
+                            setHexCode(color);
+                            setIsColorDropdownOpen(false);
+                          }}
+                        >
+                          {isSelected && (
+                            <Feather name="check" size={14} color="#14213D" />
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+            </View>
 
-						<Text className="text-brand-navy text-xs font-black mb-1">
-							Days
-						</Text>
-						<View className="flex-row justify-between mb-3">
-							{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => {
-								const isSelected = selectedDays.includes(day);
-								return (
-									<Pressable
-										key={day}
-										onPress={() => {
-											toggleDay(day);
-											if (errors.selectedDays) setErrors((prev) => ({ ...prev, selectedDays: undefined }));
-										}}
-										className={`px-2.5 py-1.5 rounded-lg border ${
-											isSelected
-												? "bg-brand-navy border-brand-navy"
-												: errors.selectedDays
-												? "bg-brand-card border-red-500"
-												: "bg-brand-card border-brand-hair"
-										}`}
-									>
-										<Text
-											className={`text-[10px] font-bold ${
-												isSelected ? "text-white" : "text-brand-slate"
-											}`}
-										>
-											{day}
-										</Text>
-									</Pressable>
-								);
-							})}
-						</View>
-						{errors.selectedDays && (
-							<Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
-								{errors.selectedDays}
-							</Text>
-						)}
+            <Text className="text-brand-navy text-xs font-black mb-1">
+              Days
+            </Text>
+            <View className="flex-row justify-between mb-3">
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => {
+                const isSelected = selectedDays.includes(day);
+                return (
+                  <Pressable
+                    key={day}
+                    onPress={() => {
+                      toggleDay(day);
+                      if (errors.selectedDays) setErrors((prev) => ({ ...prev, selectedDays: undefined }));
+                    }}
+                    className={`px-2.5 py-1.5 rounded-lg border ${
+                      isSelected
+                        ? "bg-brand-navy border-brand-navy"
+                        : errors.selectedDays
+                        ? "bg-brand-card border-red-500"
+                        : "bg-brand-card border-brand-hair"
+                    }`}
+                  >
+                    <Text
+                      className={`text-[10px] font-bold ${
+                        isSelected ? "text-white" : "text-brand-slate"
+                      }`}
+                    >
+                      {day}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {errors.selectedDays && (
+              <Text className="text-red-500 text-[10px] font-semibold mt-0.5 mb-2">
+                {errors.selectedDays}
+              </Text>
+            )}
 
-						<View className="flex-row gap-2 mt-3">
-							<View className="flex-1">
-								<Text className="text-brand-navy text-xs font-black mb-1">
-									Start Time
-								</Text>
-								<TextInput
-									className={`bg-brand-card border rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium ${
-										errors.startTime ? "border-red-500" : "border-brand-hair"
-									}`}
-									placeholder="08:00"
-									placeholderTextColor="#A8ADB8"
-									value={startTime}
-									onChangeText={(text) => {
-										setStartTime(text);
-										if (errors.startTime) setErrors((prev) => ({ ...prev, startTime: undefined }));
-									}}
-								/>
-								{errors.startTime && (
-									<Text className="text-red-500 text-[10px] font-semibold mt-0.5">
-										{errors.startTime}
-									</Text>
-								)}
-							</View>
+            <View className="flex-row gap-2 mt-3">
+              <View className="flex-1">
+                <Text className="text-brand-navy text-xs font-black mb-1">
+                  Start Time
+                </Text>
+                <TextInput
+                  className={`bg-brand-card border rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium ${
+                    errors.startTime ? "border-red-500" : "border-brand-hair"
+                  }`}
+                  placeholder="08:00"
+                  placeholderTextColor="#A8ADB8"
+                  value={startTime}
+                  onChangeText={(text) => {
+                    setStartTime(text);
+                    if (errors.startTime) setErrors((prev) => ({ ...prev, startTime: undefined }));
+                  }}
+                />
+                {errors.startTime && (
+                  <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
+                    {errors.startTime}
+                  </Text>
+                )}
+              </View>
 
-							<View className="flex-1">
-								<Text className="text-brand-navy text-xs font-black mb-1">
-									End Time
-								</Text>
-								<TextInput
-									className={`bg-brand-card border rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium ${
-										errors.endTime ? "border-red-500" : "border-brand-hair"
-									}`}
-									placeholder="10:00"
-									placeholderTextColor="#A8ADB8"
-									value={endTime}
-									onChangeText={(text) => {
-										setEndTime(text);
-										if (errors.endTime) setErrors((prev) => ({ ...prev, endTime: undefined }));
-									}}
-								/>
-								{errors.endTime && (
-									<Text className="text-red-500 text-[10px] font-semibold mt-0.5">
-										{errors.endTime}
-									</Text>
-								)}
-							</View>
-						</View>
+              <View className="flex-1">
+                <Text className="text-brand-navy text-xs font-black mb-1">
+                  End Time
+                </Text>
+                <TextInput
+                  className={`bg-brand-card border rounded-xl px-3.5 py-2 text-brand-navy text-xs font-medium ${
+                    errors.endTime ? "border-red-500" : "border-brand-hair"
+                  }`}
+                  placeholder="10:00"
+                  placeholderTextColor="#A8ADB8"
+                  value={endTime}
+                  onChangeText={(text) => {
+                    setEndTime(text);
+                    if (errors.endTime) setErrors((prev) => ({ ...prev, endTime: undefined }));
+                  }}
+                />
+                {errors.endTime && (
+                  <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
+                    {errors.endTime}
+                  </Text>
+                )}
+              </View>
+            </View>
 
-						<Text className="text-brand-navy text-xs font-black mb-1 mt-3">
-							Room
-						</Text>
-						<TextInput
-							className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
-								errors.room ? "border-red-500" : "border-brand-hair"
-							}`}
-							placeholder="Room Name"
-							placeholderTextColor="#A8ADB8"
-							value={room}
-							onChangeText={(text) => {
-								setRoom(text);
-								if (errors.room) setErrors((prev) => ({ ...prev, room: undefined }));
-							}}
-						/>
-						{errors.room && (
-							<Text className="text-red-500 text-[10px] font-semibold mt-0.5">
-								{errors.room}
-							</Text>
-						)}
+            <Text className="text-brand-navy text-xs font-black mb-1 mt-3">
+              Room
+            </Text>
+            <TextInput
+              className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+                errors.room ? "border-red-500" : "border-brand-hair"
+              }`}
+              placeholder="Room Name"
+              placeholderTextColor="#A8ADB8"
+              value={room}
+              onChangeText={(text) => {
+                setRoom(text);
+                if (errors.room) setErrors((prev) => ({ ...prev, room: undefined }));
+              }}
+            />
+            {errors.room && (
+              <Text className="text-red-500 text-[10px] font-semibold mt-0.5">
+                {errors.room}
+              </Text>
+            )}
 
-						<View className="flex-row justify-end gap-2 mt-10">
-							<Pressable
-								className="px-4 py-2 rounded-full border border-brand-hair bg-white"
-								onPress={closeAddCourseModal}
-							>
-								<Text className="text-brand-slate text-xs font-bold uppercase">Cancel</Text>
-							</Pressable>
+            <View className="flex-row justify-end gap-2 mt-10">
+              <Pressable
+                className="px-4 py-2 rounded-full border border-brand-hair bg-white"
+                onPress={closeAddCourseModal}
+              >
+                <Text className="text-brand-slate text-xs font-bold uppercase">Cancel</Text>
+              </Pressable>
 
-							<Pressable
-								className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90 min-w-[70px] items-center"
-								onPress={handleAddCourse}
-								disabled={isAddingCourse}
-							>
-								{isAddingCourse ? (
-									<ActivityIndicator size="small" color="#14213D" />
-								) : (
-									<Text className="text-brand-navy text-xs font-black uppercase">Add</Text>
-								)}
-							</Pressable>
-						</View>
-					</View>
-				</View>
+              <Pressable
+                className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90 min-w-[70px] items-center"
+                onPress={handleSaveCourse}
+                disabled={isAddingCourse}
+              >
+                {isAddingCourse ? (
+                  <ActivityIndicator size="small" color="#14213D" />
+                ) : (
+                  <Text className="text-brand-navy text-xs font-black uppercase">
+                    {editingCourseId ? "Save" : "Add"}
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
