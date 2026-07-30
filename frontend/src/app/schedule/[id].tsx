@@ -242,6 +242,7 @@ export default function Schedule() {
     selectedDays?: string;
     startTime?: string;
     endTime?: string;
+    conflict?: string;
   }>({});
 
   const closeAddCourseModal = () => {
@@ -296,8 +297,29 @@ export default function Schedule() {
       newErrors.endTime = "End time is required.";
     }
 
-    if (startTime && endTime && parseTimeToDecimal(startTime) >= parseTimeToDecimal(endTime)) {
+    const newStartDecimal = parseTimeToDecimal(startTime);
+    const newEndDecimal = parseTimeToDecimal(endTime);
+
+    if (startTime && endTime && newStartDecimal >= newEndDecimal) {
       newErrors.endTime = "End time must be after start time.";
+    }
+    
+    if (!newErrors.startTime && !newErrors.endTime && selectedDays.length > 0) {
+      const conflictingCourse = scheduleItems.find((item) => {
+        if (editingCourseId && item.id === editingCourseId) return false;
+        
+        const hasSharedDay = item.days.some((day) => selectedDays.includes(day));
+        if (!hasSharedDay) return false;
+        
+        const existingStart = item.startHour;
+        const existingEnd = item.startHour + item.durationHours;
+
+        return newStartDecimal < existingEnd && existingStart < newEndDecimal;
+      });
+
+      if (conflictingCourse) {
+        newErrors.conflict = `Schedule conflict with "${conflictingCourse.title}" (${conflictingCourse.timeDisplay}).`;
+      }
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -707,6 +729,15 @@ export default function Schedule() {
               {editingCourseId ? "Edit Course" : "Add Course"}
             </Text>
 
+            {errors.conflict && (
+              <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 flex-row items-center gap-2">
+                <Feather name="alert-circle" size={16} color="#DC2626" />
+                <Text className="text-red-600 text-xs font-medium flex-1">
+                  {errors.conflict}
+                </Text>
+              </View>
+            )}
+
             <Text className="text-brand-navy text-xs font-black mb-1">
               Course Name
             </Text>
@@ -719,7 +750,9 @@ export default function Schedule() {
               value={courseName}
               onChangeText={(text) => {
                 setCourseName(text);
-                if (errors.courseName) setErrors((prev) => ({ ...prev, courseName: undefined }));
+                if (errors.courseName || errors.conflict) {
+                  setErrors((prev) => ({ ...prev, courseName: undefined, conflict: undefined }));
+                }
               }}
               autoFocus
             />
@@ -796,7 +829,9 @@ export default function Schedule() {
                     key={day}
                     onPress={() => {
                       toggleDay(day);
-                      if (errors.selectedDays) setErrors((prev) => ({ ...prev, selectedDays: undefined }));
+                      if (errors.selectedDays || errors.conflict) {
+                        setErrors((prev) => ({ ...prev, selectedDays: undefined, conflict: undefined }));
+                      }
                     }}
                     className={`px-2.5 py-1.5 rounded-lg border ${
                       isSelected
@@ -892,12 +927,14 @@ export default function Schedule() {
                     if (val) {
                       if (showPickerMode === 'start') {
                         setStartTime(val);
-                        if (errors.startTime)
-                          setErrors((prev) => ({ ...prev, startTime: undefined }));
+                        if (errors.startTime || errors.conflict) {
+                          setErrors((prev) => ({ ...prev, startTime: undefined, conflict: undefined }));
+                        }
                       } else {
                         setEndTime(val);
-                        if (errors.endTime)
-                          setErrors((prev) => ({ ...prev, endTime: undefined }));
+                        if (errors.endTime || errors.conflict) {
+                          setErrors((prev) => ({ ...prev, endTime: undefined, conflict: undefined }));
+                        }
                       }
                     }
                     setShowPickerMode(null);
@@ -924,12 +961,14 @@ export default function Schedule() {
                       const formattedHHMM = dateToHHMM(selectedDate);
                       if (showPickerMode === "start") {
                         setStartTime(formattedHHMM);
-                        if (errors.startTime)
-                          setErrors((prev) => ({ ...prev, startTime: undefined }));
+                        if (errors.startTime || errors.conflict) {
+                          setErrors((prev) => ({ ...prev, startTime: undefined, conflict: undefined }));
+                        }
                       } else {
                         setEndTime(formattedHHMM);
-                        if (errors.endTime)
-                          setErrors((prev) => ({ ...prev, endTime: undefined }));
+                        if (errors.endTime || errors.conflict) {
+                          setErrors((prev) => ({ ...prev, endTime: undefined, conflict: undefined }));
+                        }
                       }
                     }
                   }}
