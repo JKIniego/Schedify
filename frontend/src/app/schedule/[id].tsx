@@ -242,31 +242,59 @@ export default function Schedule() {
 	};
 
 	const handleAddCourse = async () => {
-		const newErrors: typeof errors = {};
+    const newErrors: typeof errors = {};
+    
+    if (!courseName.trim()) {
+      newErrors.courseName = "Course name is required.";
+    }
+    if (!room.trim()) {
+      newErrors.room = "Room / Location is required.";
+    }
+    if (selectedDays.length === 0) {
+      newErrors.selectedDays = "Select at least one day.";
+    }
+    if (!startTime.trim()) {
+      newErrors.startTime = "Start time is required.";
+    }
+    if (!endTime.trim()) {
+      newErrors.endTime = "End time is required.";
+    }
 
-		if (!courseName.trim()) {
-			newErrors.courseName = "Course name is required.";
-		}
-		if (!room.trim()) {
-			newErrors.room = "Room / Location is required.";
-		}
-		if (selectedDays.length === 0) {
-			newErrors.selectedDays = "Select at least one day.";
-		}
-		if (!startTime.trim()) {
-			newErrors.startTime = "Start time is required.";
-		}
-		if (!endTime.trim()) {
-			newErrors.endTime = "End time is required.";
-		}
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
 
-		if (Object.keys(newErrors).length > 0) {
-			setErrors(newErrors);
-			return;
-		}
+    setErrors({});
+    setIsAddingCourse(true);
+    
+    const { data, error } = await apiRequest<CourseAPIResponse>(`/classes/${scheduleId}/courses/`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name: courseName.trim(),
+          room: room.trim(),
+          days: selectedDays,
+          start_time: startTime.trim(),
+          end_time: endTime.trim(),
+          hex_code: hexCode,
+        }),
+      }
+    );
 
-		setErrors({});
-	};
+    setIsAddingCourse(false);
+
+    if (error) {
+      Alert.alert("Error Creating Course", error);
+      return;
+    }
+
+    if (data) {
+      const newGridSlot = mapApiToGridSlot(data);
+      setScheduleItems((prev) => [...prev, newGridSlot]);
+      closeAddCourseModal();
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
