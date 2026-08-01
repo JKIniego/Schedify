@@ -53,7 +53,7 @@ const WEEKDAYS: DayType[] = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const ALL_DAYS: DayType[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const DEFAULT_START_HOUR = 8;
-const DEFAULT_END_HOUR = 17;
+const DEFAULT_END_HOUR = 16;
 
 const BASE_ROW_HEIGHT = 60;
 
