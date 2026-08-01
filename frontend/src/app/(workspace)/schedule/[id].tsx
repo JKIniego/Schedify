@@ -20,8 +20,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
-import { apiRequest } from "../../utils/api";
-import { CustomAlertModal, AlertState } from "../../utils/alert";
+import { apiRequest } from "../../../utils/api";
+import { CustomAlertModal, AlertState } from "../../../utils/alert";
 
 type DayType = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
 
