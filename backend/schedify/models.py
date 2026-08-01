@@ -33,3 +33,25 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.room})"
+
+class Task(models.Model):
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='tasks')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    is_completed = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['is_completed', '-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.course.name}"

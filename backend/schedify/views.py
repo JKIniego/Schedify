@@ -129,3 +129,77 @@ class CourseDetailView(APIView):
 
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class TaskListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, schedule_id):
+        """Fetch tasks belonging to a schedule, with optional filtering by course_id."""
+        course_id = request.query_params.get('course')
+        
+        tasks = models.Task.objects.filter(
+            course__schedule_id=schedule_id,
+            course__schedule__user=request.user
+        )
+
+        if course_id:
+            tasks = tasks.filter(course_id=course_id)
+
+        serializer = serializers.TaskSerializer(tasks, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, schedule_id):
+        """Create a new task under a course belonging to the user."""
+        course_id = request.data.get('course')
+        try:
+            course = models.Course.objects.get(
+                id=course_id,
+                schedule_id=schedule_id,
+                schedule__user=request.user
+            )
+        except models.Course.DoesNotExist:
+            return Response(
+                {"detail": "Invalid course or schedule not found."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = serializers.TaskSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(course=course)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TaskDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, pk, user):
+        try:
+            return models.Task.objects.get(pk=pk, course__schedule__user=user)
+        except models.Task.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        task = self.get_object(pk, request.user)
+        if not task:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serializers.TaskSerializer(task).data)
+
+    def patch(self, request, pk):
+        task = self.get_object(pk, request.user)
+        if not task:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = serializers.TaskSerializer(task, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        task = self.get_object(pk, request.user)
+        if not task:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        task.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
