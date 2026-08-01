@@ -25,81 +25,62 @@ import { CustomAlertModal, AlertState } from "../../../utils/alert";
 
 interface TaskItem {
   id: number;
-  course: string;
+  course: number;
+  course_name?: string;
   title: string;
   description?: string;
   priority: "low" | "medium" | "high";
   is_completed: boolean;
 }
 
-const INITIAL_TASKS: TaskItem[] = [
-  {
-    id: 1,
-    course: "CS 101",
-    title: "Submit Literature Review Draft",
-    description: "Chapter 1 and 2 introduction for term paper.",
-    priority: "high",
-    is_completed: false,
-  },
-  {
-    id: 2,
-    course: "CS 101",
-    title: "Read Chapter 4: Data Structures",
-    description: "Binary search trees and heap algorithms.",
-    priority: "medium",
-    is_completed: true,
-  },
-  {
-    id: 3,
-    course: "MATH 201",
-    title: "Group Quiz Preparation",
-    description: "Review formulas from modules 1 to 3.",
-    priority: "low",
-    is_completed: false,
-  },
-  {
-    id: 4,
-    course: "ENG 102",
-    title: "Essay Analysis Outline",
-    description: "Draft 3-point thesis statement and key arguments.",
-    priority: "medium",
-    is_completed: false,
-  },
-  {
-    id: 5,
-    course: "MATH 201",
-    title: "Problem Set #3",
-    description: "Solve exercises 4.1 through 4.8.",
-    priority: "high",
-    is_completed: false,
-  },
-];
-
-const COURSES = ["ALL COURSES", "CS 101", "MATH 201", "ENG 102"];
+interface CourseItem {
+  id: number;
+  name: string;
+}
 
 export default function Task() {
-  const { id: taskId } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>(); 
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 700;
-  
-  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
+
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>("ALL COURSES");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
-  
-  const handleToggleComplete = (id: number) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, is_completed: !t.is_completed } : t))
-    );
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (id) {
+      fetchTasks(id);
+    }
+  }, [id]);
+
+  const fetchTasks = async (classId: string) => {
+    setLoading(true);
+
+    const [coursesRes, tasksRes] = await Promise.all([
+      apiRequest<CourseItem[]>(`/classes/${classId}/courses/`),
+      apiRequest<TaskItem[]>(`/classes/${classId}/tasks/`),
+    ]);
+
+    if (coursesRes.error || tasksRes.error) {
+      Alert.alert(
+        "Error Loading Tasks",
+        coursesRes.error || tasksRes.error || "Failed to load tasks and courses"
+      );
+    } else {
+      if (coursesRes.data) setCourses(coursesRes.data);
+      if (tasksRes.data) setTasks(tasksRes.data);
+    }
+
+    setLoading(false);
   };
 
-  const handleDeleteTask = (id: number) => {
-    setTasks((prev) => prev.filter((item) => item.id !== id));
-  };
-  
   const filteredTasks = tasks.filter((t) => {
-    const matchesCourse = selectedCourse === "ALL COURSES" || t.course === selectedCourse;
+    const matchesCourse =
+      selectedCourse === "ALL COURSES" || t.course_name === selectedCourse;
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "pending" && !t.is_completed) ||
@@ -119,6 +100,8 @@ export default function Task() {
         return { bg: "bg-gray-100", text: "text-brand-slate", label: "Low" };
     }
   };
+
+  const courseOptions = ["ALL COURSES", ...courses.map((c) => c.name)];
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
@@ -156,7 +139,7 @@ export default function Task() {
             </Text>
           </View>
         </View>
-        
+
         <View className="items-center py-6">
           <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
             <View className="z-10 mb-4">
@@ -181,10 +164,10 @@ export default function Task() {
                       color="#5B6472"
                     />
                   </Pressable>
-                  
+
                   {dropdownOpen && (
                     <View className="absolute top-11 left-0 right-0 bg-white border border-brand-hair rounded-xl shadow-lg z-50 overflow-hidden py-1">
-                      {COURSES.map((course) => {
+                      {courseOptions.map((course) => {
                         const isSelected = selectedCourse === course;
                         return (
                           <Pressable
@@ -215,7 +198,7 @@ export default function Task() {
                     </View>
                   )}
                 </View>
-                
+
                 <View className="flex-row gap-1">
                   {(["all", "pending", "completed"] as const).map((type) => {
                     const active = statusFilter === type;
@@ -242,15 +225,22 @@ export default function Task() {
                 </View>
               </View>
             </View>
-            
+
             <View className="items-center mb-4">
               <Text className="text-brand-navy text-[11px] font-black uppercase tracking-widest mb-1">
                 Tasks ({filteredTasks.length})
               </Text>
               <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
             </View>
-            
-            {filteredTasks.length === 0 ? (
+
+            {loading ? (
+              <View className="py-12 items-center justify-center">
+                <ActivityIndicator size="large" color="#14213D" />
+                <Text className="text-brand-slate text-xs mt-3 font-bold">
+                  Fetching tasks...
+                </Text>
+              </View>
+            ) : filteredTasks.length === 0 ? (
               <View className="py-8 items-center justify-center rounded-2xl bg-brand-card border border-brand-hair p-4">
                 <Feather name="check-circle" size={20} color="#C9A227" />
                 <Text className="text-brand-navy text-xs font-bold mt-2">No Tasks Found</Text>
@@ -271,21 +261,22 @@ export default function Task() {
                       <View className="flex-row items-center justify-between mb-2">
                         <View className="bg-brand-navy/10 px-2 py-0.5 rounded border border-brand-navy/10">
                           <Text className="text-[10px] font-bold text-brand-navy">
-                            {item.course}
+                            {item.course_name ?? "Course"}
                           </Text>
                         </View>
 
                         <View className={`px-2 py-0.5 rounded-full ${badge.bg}`}>
-                          <Text className={`text-[9px] font-black uppercase tracking-wider ${badge.text}`}>
+                          <Text
+                            className={`text-[9px] font-black uppercase tracking-wider ${badge.text}`}
+                          >
                             {badge.label}
                           </Text>
                         </View>
                       </View>
-                      
+
                       <View className="flex-row items-start justify-between gap-2.5">
                         <Pressable
                           className="flex-row items-start gap-2.5 flex-1"
-                          onPress={() => handleToggleComplete(item.id)}
                           hitSlop={4}
                         >
                           <View
@@ -295,7 +286,9 @@ export default function Task() {
                                 : "border-brand-slate/40 bg-white"
                             }`}
                           >
-                            {item.is_completed && <Feather name="check" size={10} color="#FFFFFF" />}
+                            {item.is_completed && (
+                              <Feather name="check" size={10} color="#FFFFFF" />
+                            )}
                           </View>
 
                           <View className="flex-1">
@@ -312,7 +305,9 @@ export default function Task() {
                             {item.description ? (
                               <Text
                                 className={`text-[11px] leading-relaxed mt-1 ${
-                                  item.is_completed ? "text-brand-slate/30" : "text-brand-slate"
+                                  item.is_completed
+                                    ? "text-brand-slate/30"
+                                    : "text-brand-slate"
                                 }`}
                               >
                                 {item.description}
@@ -323,7 +318,6 @@ export default function Task() {
 
                         <Pressable
                           className="p-1 rounded-md active:bg-brand-crimson/10 self-start"
-                          onPress={() => handleDeleteTask(item.id)}
                           hitSlop={6}
                         >
                           <Feather name="trash-2" size={13} color="#8B1E3F" />

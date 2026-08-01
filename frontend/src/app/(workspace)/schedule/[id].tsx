@@ -138,7 +138,7 @@ const mapApiToGridSlot = (course: CourseAPIResponse): GridSlot => {
 };
 
 export default function Schedule() {
-  const { id: scheduleId } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>(); 
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 700;
@@ -201,15 +201,15 @@ export default function Schedule() {
   const webTimeInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (scheduleId) {
+    if (id) {
       fetchCourses();
     }
-  }, [scheduleId]);
+  }, [id]);
 
   const fetchCourses = async () => {
     setLoading(true);
     const { data, error } = await apiRequest<CourseAPIResponse[]>(
-      `/classes/${scheduleId}/courses/`
+      `/classes/${id}/courses/`
     );
 
     if (error) {
@@ -362,7 +362,7 @@ export default function Schedule() {
     const isEditing = Boolean(editingCourseId);
     const endpoint = isEditing
       ? `/courses/${editingCourseId}/`
-      : `/classes/${scheduleId}/courses/`;
+      : `/classes/${id}/courses/`;
     const method = isEditing ? "PATCH" : "POST";
 
     const { data, error } = await apiRequest<CourseAPIResponse>(endpoint, {
