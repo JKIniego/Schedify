@@ -2,7 +2,7 @@ import { ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
-export default function Settings() {
+export default function Calendar() {
   const { width } = useWindowDimensions();
   const wide = width >= 700;
 
@@ -23,7 +23,7 @@ export default function Settings() {
             </View>
 
             <Text className="text-white text-xl font-black uppercase tracking-wide">
-              Settings
+              Calendar
             </Text>
           </View>
         </View>
@@ -32,15 +32,15 @@ export default function Settings() {
           <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
             <View className="items-center mb-6">
               <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-1">
-                Preferences
+                Calendar
               </Text>
               <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
             </View>
 
             <View className="rounded-2xl p-5 bg-brand-card border border-brand-hair gap-2 shadow-xs">
-              <Text className="text-brand-navy font-bold text-base">Sample Settings Page</Text>
+              <Text className="text-brand-navy font-bold text-base">Sample Calendar Page</Text>
               <Text className="text-brand-slate text-sm leading-5">
-                This is a separate settings screen. You can add your app configuration, preferences, profile controls, and account management tools here.
+                This is a separate calendar screen. You can add your calendar details here.
               </Text>
             </View>
           </View>

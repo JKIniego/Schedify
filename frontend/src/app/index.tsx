@@ -1,124 +1,35 @@
 import { useState, useRef } from "react";
-import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View, ActivityIndicator } from "react-native";
-import Svg, { Ellipse, Path } from "react-native-svg";
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+  ActivityIndicator,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from 'expo-router';
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import * as SecureStore from 'expo-secure-store';
 import { auth } from "../utils/auth";
 import { storage } from "../utils/storage";
-
-const DAYS = ["M", "T", "W", "T", "F"];
-
-function GoldUnderline({ width = 150 }: { width?: number }) {
-  return (
-    <Svg width={width} height={10} viewBox={`0 0 ${width} 10`} style={{ marginTop: -6 }}>
-      <Path
-        d={`M2 5 Q ${width / 2} 9 ${width - 2} 4`}
-        stroke="#C9A227"
-        strokeWidth={2.5}
-        fill="none"
-        strokeLinecap="round"
-      />
-    </Svg>
-  );
-}
-
-function GradeBadge() {
-  return (
-    <View className="w-[74px] h-[62px] items-center justify-center">
-      <Svg width={74} height={62} viewBox="0 0 74 62" style={{ position: "absolute" }}>
-        <Ellipse cx={37} cy={31} rx={32} ry={24} stroke="#8B1E3F" strokeWidth={2} fill="white" />
-      </Svg>
-      <Text className="text-brand-crimson text-lg font-extrabold">
-        1.25
-      </Text>
-    </View>
-  );
-}
-
-function WeekPreview() {
-  return (
-    <View className="relative w-full items-center py-3">
-      <View className="w-full max-w-xs rounded-lg bg-white p-4 border-[1.5px] border-brand-navy">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-brand-slate text-[11px] font-bold uppercase tracking-widest">
-            This Week
-          </Text>
-          <View className="bg-brand-gold w-1.5 h-1.5 rounded-full" />
-        </View>
-
-        <View className="flex-row justify-between mb-2">
-          {DAYS.map((d, i) => (
-            <Text key={i} className="text-brand-slate text-[11px] font-semibold w-8 text-center">
-              {d}
-            </Text>
-          ))}
-        </View>
-
-        {[0, 1, 2].map((row) => (
-          <View key={row} className="flex-row justify-between mb-2">
-            {DAYS.map((_, col) => {
-              const filled = (row + col) % 3 !== 0;
-              const active = row === 1 && col === 2;
-              return (
-                <View
-                  key={col}
-                  className={`w-8 h-6 rounded-[3px] ${
-                    active ? "bg-brand-navy" : filled ? "bg-[#EEF0F4]" : "bg-transparent"
-                  }`}
-                />
-              );
-            })}
-          </View>
-        ))}
-
-        <View className="border-t border-brand-hair mt-3 pt-3">
-          <View className="flex-row items-center gap-2">
-            <Feather name="check-circle" size={13} color="#14213D" />
-            <Text className="text-brand-navy text-xs font-medium flex-1" numberOfLines={1}>
-              Problem Set 4 — due Fri
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <View className="absolute -top-1 -right-2">
-        <GradeBadge />
-      </View>
-    </View>
-  );
-}
-
-function Divider() {
-  return (
-    <View className="flex-row items-center justify-center py-9">
-      <View className="bg-brand-hair flex-1 h-[1px]" />
-      <View className="border-[1.5px] border-brand-gold w-2 h-2 rounded-full mx-3" />
-      <View className="bg-brand-hair flex-1 h-[1px]" />
-    </View>
-  );
-}
 
 const features = [
   {
     icon: "calendar" as const,
-    color: "#14213D",
-    title: "Class schedule",
+    title: "Class Schedule",
     body: "Every class and room for the week, laid out the way your day actually runs.",
   },
   {
     icon: "check-square" as const,
-    color: "#8B1E3F",
-    title: "Task list",
-    body: "Assignments sit next to the class they belong to, not in a separate app.",
+    title: "Task Management",
+    body: "Assignments sit right next to their corresponding class schedules.",
   },
   {
     icon: "bar-chart-2" as const,
-    color: "#C9A227",
-    title: "Grade calculator",
-    body: "Set your weights once — your running average updates as scores come in.",
+    title: "Grade Calculator",
+    body: "Set your course weights once and your average updates as scores come in.",
   },
 ];
 
@@ -159,7 +70,7 @@ export default function Index() {
         });
       }
 
-      const { data, error, status } = result;
+      const { data, error } = result;
 
       if (data?.access && data?.refresh) {
         await storage.setItem("access_token", data.access);
@@ -167,14 +78,14 @@ export default function Index() {
         router.replace("/dashboard");
         return;
       }
-      
+
       if (error) {
         setErrorMsg(error);
         return;
       }
-      
+
       setErrorMsg("Authentication failed. Please try again.");
-    } catch (err) {
+    } catch {
       const storedToken = await storage.getItem("access_token");
       if (storedToken) {
         router.replace("/dashboard");
@@ -191,202 +102,228 @@ export default function Index() {
     setErrorMsg(null);
     if (scrollViewRef.current && formPositionRef.current > 0) {
       scrollViewRef.current.scrollTo({
-        y: formPositionRef.current - 50,
+        y: formPositionRef.current - 20,
         animated: true,
       });
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <StatusBar style="dark" />
+    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+      <StatusBar style="light" />
 
       <ScrollView
         ref={scrollViewRef}
         className="flex-1"
-        contentContainerStyle={{ alignItems: "center", paddingTop: 24, paddingBottom: 56 }}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 56 }}
       >
-        <View style={{ width: "100%", maxWidth: 480, paddingHorizontal: wide ? 32 : 24 }}>
-          <View className="flex-row items-center justify-between mb-10">
-            <View className="flex-row items-center gap-2.5">
-              <View className="border-[1.5px] border-brand-navy w-9 h-9 rounded-md items-center justify-center">
-                <Text className="text-brand-navy text-sm font-bold">
-                  S
-                </Text>
-              </View>
-              <Text className="text-brand-navy text-lg font-bold">
-                Schedify
-              </Text>
-            </View>
-            <View className="border border-brand-hair flex-row items-center gap-1.5 rounded-full px-3 py-1.5">
-              <Feather name="wifi-off" size={11} color="#14213D" />
-              <Text className="text-brand-slate text-xs font-medium">
-                Works offline
-              </Text>
-            </View>
-          </View>
-
-          <Text className="text-brand-navy text-[32px] leading-[40px] font-extrabold mb-1">
-            Your semester,{"\n"}on one
-          </Text>
-          <View className="mb-4">
-            <Text className="text-brand-navy text-[32px] leading-[40px] font-extrabold">
-              timetable.
-            </Text>
-            <GoldUnderline width={148} />
-          </View>
-          <Text className="text-brand-slate text-base leading-6 mb-8 max-w-[300px]">
-            Classes, tasks, and grades in the same grid — synced when you're
-            online, untouched when you're not.
-          </Text>
-
-          <WeekPreview />
-
-          <View className="mt-10">
-            <Pressable className="bg-brand-navy rounded-md py-3.5 items-center" onPress={() => scrollToForm("register")}>
-              <Text className="text-white text-sm font-bold tracking-wider">
-                Get Started
-              </Text>
-            </Pressable>
-            <Pressable className="items-center mt-4" onPress={() => scrollToForm("login")}>
-              <Text className="text-brand-slate text-sm">
-                Already enrolled?{" "}
-                <Text className="text-brand-crimson font-semibold">
-                  Log in
-                </Text>
-              </Text>
-            </Pressable>
-          </View>
-
-          <Divider />
-
-          <Text className="text-brand-navy text-2xl font-bold text-center mb-2">
-            Built for the semester
-          </Text>
-          <Text className="text-brand-slate text-sm text-center mb-8 leading-5">
-            Three things that used to live in three apps, now on one page.
-          </Text>
-
-          <View className="flex-row flex-wrap" style={{ gap: 12 }}>
-            {features.map((f) => (
-              <View
-                key={f.title}
-                style={{
-                  flexBasis: wide ? "31%" : "47%",
-                  flexGrow: 1,
-                }}
-                className="bg-brand-card border border-brand-hair rounded-lg p-4"
-              >
-                <View
-                  style={{ borderColor: f.color }}
-                  className="w-9 h-9 border-[1.5px] rounded-full items-center justify-center mb-3"
-                >
-                  <Feather name={f.icon} size={15} color={f.color} />
+        <View className="bg-brand-navy w-full pt-4 pb-8 mb-4 items-center relative">
+          <View style={{ width: "100%", maxWidth: 500, paddingHorizontal: wide ? 32 : 24 }}>
+            <View className="flex-row items-center justify-between mb-8">
+              <View className="flex-row items-center gap-2">
+                <View className="w-8 h-8 rounded-lg bg-brand-gold items-center justify-center">
+                  <Text className="text-brand-navy text-base font-black">S</Text>
                 </View>
-                <Text className="text-brand-navy text-sm font-bold mb-1">
-                  {f.title}
-                </Text>
-                <Text className="text-brand-slate text-xs leading-5">
-                  {f.body}
-                </Text>
+                <Text className="text-white text-lg font-bold tracking-wide">SCHEDIFY</Text>
               </View>
-            ))}
-          </View>
 
-          <Divider />
-
-          <View 
-            className="bg-white border border-brand-hair rounded-xl p-5" 
-            onLayout={(event) => { formPositionRef.current = event.nativeEvent.layout.y; }}
-          >
-            <View className="bg-[#F3F1EA] flex-row rounded-full p-1 mb-5">
-              <Pressable
-                onPress={() => { setMode("login"); setErrorMsg(null); }}
-                className={`flex-1 py-2 rounded-full items-center ${mode === "login" ? "bg-brand-navy" : "bg-transparent"}`}
-              >
-                <Text className={`text-sm font-semibold ${mode === "login" ? "text-white" : "text-brand-slate"}`}>
-                  Log in
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => { setMode("register"); setErrorMsg(null); }}
-                className={`flex-1 py-2 rounded-full items-center ${mode === "register" ? "bg-brand-navy" : "bg-transparent"}`}
-              >
-                <Text className={`text-sm font-semibold ${mode === "register" ? "text-white" : "text-brand-slate"}`}>
-                  Register
-                </Text>
-              </Pressable>
+              <View className="flex-row items-center gap-4">
+                <Pressable onPress={() => scrollToForm("login")}>
+                  <Text className="text-white/80 text-xs font-semibold uppercase tracking-wider">
+                    Log In
+                  </Text>
+                </Pressable>
+                <Pressable
+                  className="bg-brand-gold px-3.5 py-1.5 rounded-full"
+                  onPress={() => scrollToForm("register")}
+                >
+                  <Text className="text-brand-navy text-xs font-bold uppercase tracking-wider">
+                    Sign Up
+                  </Text>
+                </Pressable>
+              </View>
             </View>
-
-            {errorMsg && (
-              <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                <Text className="text-red-600 text-xs text-center font-medium">{errorMsg}</Text>
+            
+            <View className="my-4">
+              <Text className="text-white text-2xl md:text-3xl font-black uppercase tracking-wide leading-tight mb-3">
+                Manage Your Semester Goals With Ease
+              </Text>
+              <Text className="text-white/80 text-xs md:text-sm leading-5 mb-6 max-w-[340px]">
+                Organize your course schedule, track upcoming task deadlines, and keep your overall grades on target.
+              </Text>
+              
+              <View className="flex-row gap-3 mb-4">
+                <Pressable
+                  className="bg-brand-gold px-5 py-2.5 rounded-full active:opacity-90"
+                  onPress={() => scrollToForm("register")}
+                >
+                  <Text className="text-brand-navy text-xs font-black uppercase tracking-wider">
+                    Get Started
+                  </Text>
+                </Pressable>
+                <Pressable
+                  className="bg-brand-crimson px-5 py-2.5 rounded-full active:opacity-90"
+                  onPress={() => scrollToForm("login")}
+                >
+                  <Text className="text-white text-xs font-black uppercase tracking-wider">
+                    Sign In
+                  </Text>
+                </Pressable>
               </View>
-            )}
+            </View>
+          </View>
+        </View>
+        
+        <View className="items-center w-full mt-4">
+          <View style={{ width: "100%", maxWidth: 500, paddingHorizontal: wide ? 32 : 24 }}>
+            <View className="items-center mb-8">
+              <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-1">
+                Overview & Features
+              </Text>
+              <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
+            </View>
+            
+            <View className="flex-row justify-between mb-10 gap-3">
+              {features.map((f) => (
+                <View key={f.title} className="flex-1 items-center text-center">
+                  <View className="w-12 h-12 rounded-full bg-brand-card border border-brand-hair items-center justify-center mb-2">
+                    <Feather name={f.icon} size={20} color="#C9A227" />
+                  </View>
+                  <Text className="text-brand-navy text-xs font-bold text-center mb-1">
+                    {f.title}
+                  </Text>
+                  <Text className="text-brand-slate text-[10px] text-center leading-3">
+                    {f.body}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            
+            <View className="items-center mb-6">
+              <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-1">
+                Access Your Account
+              </Text>
+              <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
+            </View>
+            
+            <View
+              className="bg-brand-card border border-brand-hair rounded-2xl p-5 shadow-xs"
+              onLayout={(event) => {
+                formPositionRef.current = event.nativeEvent.layout.y;
+              }}
+            >
+              <View className="bg-white border border-brand-hair p-1 rounded-full flex-row mb-5">
+                <Pressable
+                  onPress={() => {
+                    setMode("login");
+                    setErrorMsg(null);
+                  }}
+                  className={`flex-1 py-2 rounded-full items-center ${
+                    mode === "login" ? "bg-brand-navy" : "bg-transparent"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold uppercase tracking-wider ${
+                      mode === "login" ? "text-white" : "text-brand-slate"
+                    }`}
+                  >
+                    Log In
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setMode("register");
+                    setErrorMsg(null);
+                  }}
+                  className={`flex-1 py-2 rounded-full items-center ${
+                    mode === "register" ? "bg-brand-navy" : "bg-transparent"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold uppercase tracking-wider ${
+                      mode === "register" ? "text-white" : "text-brand-slate"
+                    }`}
+                  >
+                    Register
+                  </Text>
+                </Pressable>
+              </View>
 
-            {mode === "register" && (
+              {errorMsg && (
+                <View className="bg-brand-crimson/10 border border-brand-crimson/20 rounded-xl p-3 mb-4">
+                  <Text className="text-brand-crimson text-xs font-medium text-center">
+                    {errorMsg}
+                  </Text>
+                </View>
+              )}
+
+              {mode === "register" && (
+                <View className="mb-3">
+                  <Text className="text-brand-slate text-xs font-bold uppercase tracking-wider mb-1 ml-1">
+                    Name
+                  </Text>
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Juan Dela Cruz"
+                    placeholderTextColor="#A8ADB8"
+                    className="border border-brand-hair text-brand-navy rounded-xl px-4 py-2.5 text-xs bg-white"
+                  />
+                </View>
+              )}
+
               <View className="mb-3">
-                <Text className="text-brand-slate text-sm font-medium mb-1.5 ml-1">
-                  Name
+                <Text className="text-brand-slate text-xs font-bold uppercase tracking-wider mb-1 ml-1">
+                  Email Address
                 </Text>
                 <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Juan Dela Cruz"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  placeholder="student@example.com"
                   placeholderTextColor="#A8ADB8"
-                  className="border border-brand-hair text-brand-navy rounded-lg px-4 py-3 text-sm bg-white"
+                  className="border border-brand-hair text-brand-navy rounded-xl px-4 py-2.5 text-xs bg-white"
                 />
               </View>
-            )}
 
-            <View className="mb-3">
-              <Text className="text-brand-slate text-sm font-medium mb-1.5 ml-1">
-                Email
-              </Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                placeholder="you@example.com"
-                placeholderTextColor="#A8ADB8"
-                className="border border-brand-hair text-brand-navy rounded-lg px-4 py-3 text-sm bg-white"
-              />
-            </View>
-
-            <View className="mb-5">
-              <Text className="text-brand-slate text-sm font-medium mb-1.5 ml-1">
-                Password
-              </Text>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor="#A8ADB8"
-                secureTextEntry
-                className="border border-brand-hair text-brand-navy rounded-lg px-4 py-3 text-sm bg-white"
-              />
-            </View>
-
-            <Pressable
-              disabled={loading}
-              className="bg-brand-navy rounded-lg py-3.5 items-center justify-center"
-              onPress={handleSubmit}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text className="text-white text-sm font-bold">
-                  {mode === "login" ? "Log in" : "Create account"}
+              <View className="mb-5">
+                <Text className="text-brand-slate text-xs font-bold uppercase tracking-wider mb-1 ml-1">
+                  Password
                 </Text>
-              )}
-            </Pressable>
-          </View>
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••••"
+                  placeholderTextColor="#A8ADB8"
+                  secureTextEntry
+                  className="border border-brand-hair text-brand-navy rounded-xl px-4 py-2.5 text-xs bg-white"
+                />
+              </View>
 
-          <Text className="text-[#A8ADB8] text-xs text-center mt-8 leading-4">
-            No connection needed — your schedule lives on your device first.
-          </Text>
+              <Pressable
+                disabled={loading}
+                className="bg-brand-gold rounded-full py-3 items-center justify-center active:opacity-90"
+                onPress={handleSubmit}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#14213D" size="small" />
+                ) : (
+                  <Text className="text-brand-navy text-xs font-black uppercase tracking-wider">
+                    {mode === "login" ? "Sign In" : "Create Account"}
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+
+            <View className="flex-row items-center justify-center gap-1.5 mt-6">
+              <Feather name="wifi-off" size={12} color="#5B6472" />
+              <Text className="text-brand-slate text-xs">
+                Works completely offline on your device.
+              </Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
