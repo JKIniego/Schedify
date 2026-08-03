@@ -57,6 +57,25 @@ export default function WorkspaceLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="back-to-dashboard"
+        options={{
+          href: "/dashboard",
+          tabBarLabel: "Dashboard",
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: "600",
+            marginTop: -4,
+            paddingBottom: 4,
+            color: "#8B1E3F",
+          },
+          tabBarActiveTintColor: "#8B1E3F",
+          tabBarInactiveTintColor: "#8B1E3F",
+          tabBarIcon: ({ color }) => (
+            <Feather name="arrow-left" size={20} color="#8B1E3F" />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

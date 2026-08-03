@@ -267,13 +267,6 @@ export default function Task() {
             }}
           >
             <View className="flex-row items-center justify-between mb-4">
-              <Pressable
-                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
-                onPress={() => router.back()}
-              >
-                <Feather name="arrow-left" size={18} color="#FFFFFF" />
-              </Pressable>
-
               <View className="flex-row items-center gap-2">
                 <View className="w-8 h-8 rounded-lg bg-brand-gold items-center justify-center">
                   <Text className="text-brand-navy text-base font-black">S</Text>
