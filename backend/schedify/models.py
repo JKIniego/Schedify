@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 class ClassSchedule(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='schedules')
@@ -46,7 +47,7 @@ class Task(models.Model):
     description = models.TextField(blank=True, null=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     is_completed = models.BooleanField(default=False)
-    deadline = models.DateTimeField()
+    deadline = models.DateTimeField(default=timezone.now)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
