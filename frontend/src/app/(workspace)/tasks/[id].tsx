@@ -373,7 +373,7 @@ export default function Task() {
                 </Text>
               </View>
             ) : (
-              <View className="gap-2.5 z-0" style={{ zIndex: 0 }}>
+              <View className="flex-row flex-wrap justify-between gap-y-2.5 z-0" style={{ zIndex: 0 }}>
                 {filteredTasks.map((item) => {
                   const badge = getPriorityBadge(item.priority);
                   const formattedDeadline = formatDeadline(item.deadline);
@@ -382,19 +382,22 @@ export default function Task() {
                   return (
                     <View
                       key={item.id}
-                      className={`rounded-2xl border p-3 shadow-2xs ${cardStyles.cardBg}`}
+                      className={`w-[48.5%] rounded-2xl border p-3 shadow-2xs ${cardStyles.cardBg}`}
                     >
                       <View className="flex-row items-center justify-between mb-2">
-                        <View className="flex-row items-center gap-1.5">
-                          <View className="bg-brand-navy/10 px-2 py-0.5 rounded border border-brand-navy/10">
-                            <Text className="text-[10px] font-bold text-brand-navy">
+                        <View className="flex-row items-center gap-1.5 flex-1 pr-1">
+                          <View className="bg-brand-navy/10 px-2 py-0.5 rounded border border-brand-navy/10 shrink">
+                            <Text 
+                              className="text-[10px] font-bold text-brand-navy"
+                              numberOfLines={1}
+                            >
                               {item.course_name ?? "Course"}
                             </Text>
                           </View>
 
                           {cardStyles.isOverdue && (
-                            <View className={`px-2 py-0.5 rounded-full ${cardStyles.overdueBadgeBg}`}>
-                              <Text className={`text-[9px] font-black uppercase tracking-wider ${cardStyles.overdueBadgeText}`}>
+                            <View className={`px-1.5 py-0.5 rounded-full ${cardStyles.overdueBadgeBg}`}>
+                              <Text className={`text-[8px] font-black uppercase tracking-wider ${cardStyles.overdueBadgeText}`}>
                                 Overdue
                               </Text>
                             </View>
@@ -410,9 +413,9 @@ export default function Task() {
                         </View>
                       </View>
 
-                      <View className="flex-row items-start justify-between gap-2.5">
+                      <View className="flex-row items-start justify-between gap-2">
                         <Pressable
-                          className="flex-row items-start gap-2.5 flex-1"
+                          className="flex-row items-start gap-2 flex-1"
                           hitSlop={4}
                         >
                           <View
@@ -434,6 +437,7 @@ export default function Task() {
                                   ? "text-brand-slate/50 line-through"
                                   : "text-brand-navy"
                               }`}
+                              numberOfLines={2}
                             >
                               {item.title}
                             </Text>
@@ -445,6 +449,7 @@ export default function Task() {
                                     ? "text-brand-slate/30"
                                     : "text-brand-slate"
                                 }`}
+                                numberOfLines={2}
                               >
                                 {item.description}
                               </Text>
@@ -471,6 +476,7 @@ export default function Task() {
                                       ? "text-brand-slate/40 line-through"
                                       : "text-brand-crimson"
                                   }`}
+                                  numberOfLines={1}
                                 >
                                   Due: {formattedDeadline}
                                 </Text>
