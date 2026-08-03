@@ -32,6 +32,7 @@ interface TaskItem {
   deadline?: string | null;
   priority: "low" | "medium" | "high";
   is_completed: boolean;
+  mark_as_completed_date?: string | null;
 }
 
 interface CourseItem {
@@ -120,10 +121,20 @@ export default function Task() {
     setLoading(false);
   };
   
-  const isPastDeadline = (deadline?: string | null) => {
-    if (!deadline) return false;
-    const deadlineDate = new Date(deadline);
+  const isTaskOverdue = (task: TaskItem) => {
+    if (!task.deadline) return false;
+    
+    const deadlineDate = new Date(task.deadline);
     if (isNaN(deadlineDate.getTime())) return false;
+    
+    if (task.is_completed) {
+      if (!task.mark_as_completed_date) return false;
+      const completedDate = new Date(task.mark_as_completed_date);
+      if (isNaN(completedDate.getTime())) return false;
+      
+      return completedDate > deadlineDate;
+    }
+    
     return new Date() > deadlineDate;
   };
   
@@ -135,7 +146,7 @@ export default function Task() {
       all: courseFiltered.length,
       pending: courseFiltered.filter((t) => !t.is_completed).length,
       completed: courseFiltered.filter((t) => t.is_completed).length,
-      overdue: courseFiltered.filter((t) => isPastDeadline(t.deadline)).length,
+      overdue: courseFiltered.filter((t) => isTaskOverdue(t)).length,
     };
   }, [tasks, selectedCourse]);
 
@@ -143,7 +154,7 @@ export default function Task() {
     const matchesCourse =
       selectedCourse === "ALL COURSES" || t.course_name === selectedCourse;
 
-    const isOverdue = isPastDeadline(t.deadline);
+    const isOverdue = isTaskOverdue(t);
 
     const matchesStatus =
       statusFilter === "all" ||
@@ -167,33 +178,26 @@ export default function Task() {
   };
   
   const getTaskCardStyles = (task: TaskItem) => {
-    const pastDeadline = isPastDeadline(task.deadline);
-    
-    if (pastDeadline) {
-      if (!task.is_completed) {
-        return {
-          cardBg: "bg-red-50 border-red-200",
-          isOverdue: true,
-          overdueBadgeBg: "bg-red-100",
-          overdueBadgeText: "text-red-700",
-        };
-      } else {
-        return {
-          cardBg: "bg-emerald-50 border-emerald-200",
-          isOverdue: true,
-          overdueBadgeBg: "bg-red-100",
-          overdueBadgeText: "text-red-700",
-        };
-      }
-    }
+    const overdue = isTaskOverdue(task);
     
     if (task.is_completed) {
       return {
         cardBg: "bg-emerald-50 border-emerald-200",
-        isOverdue: false,
+        isOverdue: overdue,
+        overdueBadgeBg: "bg-red-100",
+        overdueBadgeText: "text-red-700",
       };
     }
-    
+
+    if (overdue) {
+      return {
+        cardBg: "bg-red-50 border-red-200",
+        isOverdue: true,
+        overdueBadgeBg: "bg-red-100",
+        overdueBadgeText: "text-red-700",
+      };
+    }
+
     return {
       cardBg: "bg-brand-card border-brand-hair",
       isOverdue: false,
@@ -229,16 +233,25 @@ export default function Task() {
     setAlertConfig({ visible: true, title, message, type: "alert" });
   };
 
-  const handleMarkAsComplete = async(taskId: Number) => {
-    const { error } = await apiRequest(`/tasks/${taskId}/`, {
+  const handleMarkAsComplete = async (task: TaskItem) => {
+    const updatedStatus = !task.is_completed;
+    const completionDate = updatedStatus ? new Date().toISOString() : null;
+
+    const { error } = await apiRequest(`/tasks/${task.id}/`, {
       method: "PATCH",
-      body: JSON.stringify({ is_completed: true })
+      body: JSON.stringify({
+        is_completed: updatedStatus,
+        mark_as_completed_date: completionDate,
+      }),
     });
 
-    if (error) showAlert("Marking as Complete Failed", error);
-    closeTaskModal();
-    fetchTasks(id);
-  }
+    if (error) {
+      showAlert("Updating Status Failed", error);
+    } else {
+      closeTaskModal();
+      if (id) fetchTasks(id);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
@@ -530,7 +543,7 @@ export default function Task() {
           </Animated.View>
           
           {selectedTask && (() => {
-            const isTaskOverdue = isPastDeadline(selectedTask.deadline);
+            const isOverdue = isTaskOverdue(selectedTask);
 
             return (
               <Animated.View
@@ -562,7 +575,7 @@ export default function Task() {
                           {getPriorityBadge(selectedTask.priority).label} Priority
                         </Text>
                       </View>
-                      {isTaskOverdue && (
+                      {isOverdue && (
                         <View className="bg-red-100 px-2.5 py-1 rounded-full">
                           <Text className="text-xs font-black text-red-700 uppercase tracking-wider">
                             Overdue
@@ -586,10 +599,10 @@ export default function Task() {
                 <ScrollView showsVerticalScrollIndicator={false} className="mb-6">
                   {selectedTask.deadline && (
                     <View className="flex-row items-center gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-brand-hair">
-                      <Feather name="calendar" size={16} color={isTaskOverdue && !selectedTask.is_completed ? "#B91C1C" : "#8B1E3F"} />
+                      <Feather name="calendar" size={16} color={isOverdue && !selectedTask.is_completed ? "#B91C1C" : "#8B1E3F"} />
                       <View>
                         <Text className="text-[10px] font-bold text-brand-slate uppercase">Deadline</Text>
-                        <Text className={`text-xs font-bold ${isTaskOverdue && !selectedTask.is_completed ? "text-red-700" : "text-brand-navy"}`}>
+                        <Text className={`text-xs font-bold ${isOverdue && !selectedTask.is_completed ? "text-red-700" : "text-brand-navy"}`}>
                           {formatDeadline(selectedTask.deadline)}
                         </Text>
                       </View>
@@ -609,7 +622,7 @@ export default function Task() {
                     className={`flex-1 py-3.5 rounded-xl items-center justify-center flex-row gap-2 ${
                       selectedTask.is_completed ? "bg-slate-200" : "bg-brand-navy"
                     }`}
-                    onPress={() => handleMarkAsComplete(selectedTask.id)}
+                    onPress={() => handleMarkAsComplete(selectedTask)}
                   >
                     <Feather
                       name={selectedTask.is_completed ? "x-circle" : "check-circle"}
