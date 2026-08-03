@@ -219,6 +219,27 @@ export default function Task() {
 
   const courseOptions = ["ALL COURSES", ...courses.map((c) => c.name)];
 
+  const [alertConfig, setAlertConfig] = useState<AlertState>({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  const showAlert = (title: string, message?: string) => {
+    setAlertConfig({ visible: true, title, message, type: "alert" });
+  };
+
+  const handleMarkAsComplete = async(taskId: Number) => {
+    const { error } = await apiRequest(`/tasks/${taskId}/`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_completed: true })
+    });
+
+    if (error) showAlert("Marking as Complete Failed", error);
+    closeTaskModal();
+    fetchTasks(id);
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       <StatusBar style="light" />
@@ -588,16 +609,7 @@ export default function Task() {
                     className={`flex-1 py-3.5 rounded-xl items-center justify-center flex-row gap-2 ${
                       selectedTask.is_completed ? "bg-slate-200" : "bg-brand-navy"
                     }`}
-                    onPress={() => {
-                      setTasks((prev) =>
-                        prev.map((t) =>
-                          t.id === selectedTask.id
-                            ? { ...t, is_completed: !t.is_completed }
-                            : t
-                        )
-                      );
-                      setSelectedTask((prev) => prev ? { ...prev, is_completed: !prev.is_completed } : null);
-                    }}
+                    onPress={() => handleMarkAsComplete(selectedTask.id)}
                   >
                     <Feather
                       name={selectedTask.is_completed ? "x-circle" : "check-circle"}
