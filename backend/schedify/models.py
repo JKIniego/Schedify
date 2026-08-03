@@ -46,12 +46,13 @@ class Task(models.Model):
     description = models.TextField(blank=True, null=True)
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     is_completed = models.BooleanField(default=False)
+    deadline = models.DateTimeField()
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['is_completed', '-created_at']
+        ordering = ['is_completed', '-deadline', '-created_at']
 
     def __str__(self):
         return f"{self.title} - {self.course.name}"
