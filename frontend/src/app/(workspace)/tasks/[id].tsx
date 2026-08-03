@@ -85,6 +85,18 @@ export default function Task() {
     if (isNaN(deadlineDate.getTime())) return false;
     return new Date() > deadlineDate;
   };
+  
+  const taskCounts = useMemo(() => {
+    const courseFiltered = tasks.filter(
+      (t) => selectedCourse === "ALL COURSES" || t.course_name === selectedCourse
+    );
+    return {
+      all: courseFiltered.length,
+      pending: courseFiltered.filter((t) => !t.is_completed).length,
+      completed: courseFiltered.filter((t) => t.is_completed).length,
+      overdue: courseFiltered.filter((t) => isPastDeadline(t.deadline)).length,
+    };
+  }, [tasks, selectedCourse]);
 
   const filteredTasks = tasks.filter((t) => {
     const matchesCourse =
@@ -206,38 +218,54 @@ export default function Task() {
 
         <View className="items-center py-6">
           <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
-            <View className="z-10 mb-4">
-              <View className="flex-row items-center justify-between gap-2">
-                <View className="relative flex-1">
-                  <Pressable
-                    className="flex-row items-center justify-between bg-brand-card border border-brand-hair px-3 py-2 rounded-xl active:bg-brand-hair/20"
-                    onPress={() => setDropdownOpen((prev) => !prev)}
-                  >
-                    <View className="flex-row items-center gap-1.5 flex-1 pr-1">
+            <View className="z-30 mb-6 gap-3" style={{ zIndex: 30 }}>
+              <View className="relative z-40" style={{ zIndex: 40 }}>
+                <Pressable
+                  className={`flex-row items-center justify-between bg-white border px-3.5 py-2.5 rounded-xl shadow-2xs active:bg-slate-50 ${
+                    dropdownOpen ? "border-brand-navy ring-1 ring-brand-navy/20" : "border-brand-hair"
+                  }`}
+                  onPress={() => setDropdownOpen((prev) => !prev)}
+                >
+                  <View className="flex-row items-center gap-2 flex-1 pr-2">
+                    <View className="w-6 h-6 rounded-md bg-brand-navy/5 items-center justify-center">
                       <Feather name="book-open" size={12} color="#14213D" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-[9px] font-bold text-brand-slate uppercase tracking-wider">
+                        Filter by Course
+                      </Text>
                       <Text
-                        className="text-xs font-bold text-brand-navy tracking-tight"
+                        className="text-xs font-black text-brand-navy tracking-tight"
                         numberOfLines={1}
                       >
                         {selectedCourse}
                       </Text>
                     </View>
-                    <Feather
-                      name={dropdownOpen ? "chevron-up" : "chevron-down"}
-                      size={14}
-                      color="#5B6472"
-                    />
-                  </Pressable>
-
-                  {dropdownOpen && (
-                    <View className="absolute top-11 left-0 right-0 bg-white border border-brand-hair rounded-xl shadow-lg z-50 overflow-hidden py-1">
+                  </View>
+                  <Feather
+                    name={dropdownOpen ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color="#5B6472"
+                  />
+                </Pressable>
+                
+                {dropdownOpen && (
+                  <View 
+                    className="absolute top-14 left-0 right-0 bg-white border border-brand-hair rounded-2xl shadow-xl z-50 overflow-hidden py-1"
+                    style={{ zIndex: 50, elevation: 10 }}
+                  >
+                    <ScrollView 
+                      nestedScrollEnabled 
+                      style={{ maxHeight: 200 }} 
+                      showsVerticalScrollIndicator={false}
+                    >
                       {courseOptions.map((course) => {
                         const isSelected = selectedCourse === course;
                         return (
                           <Pressable
                             key={course}
-                            className={`px-3 py-2 flex-row items-center justify-between active:bg-brand-card ${
-                              isSelected ? "bg-brand-card" : ""
+                            className={`px-4 py-2.5 flex-row items-center justify-between active:bg-brand-card ${
+                              isSelected ? "bg-brand-navy/5" : ""
                             }`}
                             onPress={() => {
                               setSelectedCourse(course);
@@ -254,43 +282,75 @@ export default function Task() {
                               {course}
                             </Text>
                             {isSelected && (
-                              <Feather name="check" size={12} color="#14213D" />
+                              <Feather name="check" size={14} color="#14213D" />
                             )}
                           </Pressable>
                         );
                       })}
-                    </View>
-                  )}
-                </View>
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+              
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 6 }}
+                className="flex-row z-10"
+                style={{ zIndex: 10 }}
+              >
+                {(["all", "pending", "completed", "overdue"] as const).map((type) => {
+                  const active = statusFilter === type;
+                  const count = taskCounts[type];
 
-                <View className="flex-row gap-1">
-                  {(["all", "pending", "completed", "overdue"] as const).map((type) => {
-                    const active = statusFilter === type;
-                    return (
-                      <Pressable
-                        key={type}
-                        onPress={() => setStatusFilter(type)}
-                        className={`px-2 py-2 rounded-xl border ${
+                  return (
+                    <Pressable
+                      key={type}
+                      onPress={() => setStatusFilter(type)}
+                      className={`px-3 py-1.5 rounded-full flex-row items-center gap-1.5 border transition-all ${
+                        active
+                          ? type === "overdue"
+                            ? "bg-red-700 border-red-700"
+                            : "bg-brand-navy border-brand-navy"
+                          : "bg-white border-brand-hair active:bg-slate-50"
+                      }`}
+                    >
+                      <Text
+                        className={`text-[10px] font-bold uppercase tracking-wider ${
+                          active ? "text-white" : "text-brand-slate"
+                        }`}
+                      >
+                        {type}
+                      </Text>
+                      
+                      <View
+                        className={`px-1.5 py-0.2 rounded-full ${
                           active
-                            ? "bg-brand-navy border-brand-navy"
-                            : "bg-white border-brand-hair"
+                            ? "bg-white/20"
+                            : type === "overdue" && count > 0
+                            ? "bg-red-100"
+                            : "bg-slate-100"
                         }`}
                       >
                         <Text
-                          className={`text-[9px] font-bold uppercase tracking-wider ${
-                            active ? "text-white" : "text-brand-slate"
+                          className={`text-[9px] font-black ${
+                            active
+                              ? "text-white"
+                              : type === "overdue" && count > 0
+                              ? "text-red-700"
+                              : "text-brand-navy"
                           }`}
                         >
-                          {type}
+                          {count}
                         </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
-
-            <View className="items-center mb-4">
+            
+            <View className="items-center mb-4 z-0" style={{ zIndex: 0 }}>
               <Text className="text-brand-navy text-[11px] font-black uppercase tracking-widest mb-1">
                 Tasks ({filteredTasks.length})
               </Text>
@@ -313,7 +373,7 @@ export default function Task() {
                 </Text>
               </View>
             ) : (
-              <View className="gap-2.5">
+              <View className="gap-2.5 z-0" style={{ zIndex: 0 }}>
                 {filteredTasks.map((item) => {
                   const badge = getPriorityBadge(item.priority);
                   const formattedDeadline = formatDeadline(item.deadline);
@@ -332,7 +392,6 @@ export default function Task() {
                             </Text>
                           </View>
 
-                          {/* Overdue Badge */}
                           {cardStyles.isOverdue && (
                             <View className={`px-2 py-0.5 rounded-full ${cardStyles.overdueBadgeBg}`}>
                               <Text className={`text-[9px] font-black uppercase tracking-wider ${cardStyles.overdueBadgeText}`}>
