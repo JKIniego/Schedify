@@ -51,6 +51,47 @@ export default function Task() {
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed" | "overdue">("all");
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  
+  const slideAnim = useRef(new Animated.Value(300)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (selectedTask) {
+      fadeAnim.setValue(0);
+      slideAnim.setValue(300);
+
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [selectedTask, fadeAnim, slideAnim]);
+
+  const closeTaskModal = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setSelectedTask(null);
+    });
+  };
 
   useEffect(() => {
     if (id) {
@@ -173,8 +214,7 @@ export default function Task() {
         minute: "2-digit",
         hour12: true,
       })
-      .replace(",", "")
-      .toLowerCase();
+      .replace(",", "");
   };
 
   const courseOptions = ["ALL COURSES", ...courses.map((c) => c.name)];
@@ -375,124 +415,72 @@ export default function Task() {
             ) : (
               <View className="flex-row flex-wrap justify-between gap-y-2.5 z-0" style={{ zIndex: 0 }}>
                 {filteredTasks.map((item) => {
-                  const badge = getPriorityBadge(item.priority);
                   const formattedDeadline = formatDeadline(item.deadline);
                   const cardStyles = getTaskCardStyles(item);
 
                   return (
-                    <View
+                    <Pressable
                       key={item.id}
-                      className={`w-[48.5%] rounded-2xl border p-3 shadow-2xs ${cardStyles.cardBg}`}
+                      onPress={() => setSelectedTask(item)}
+                      className={`w-[48.5%] rounded-2xl border p-3 shadow-2xs flex-col justify-between ${cardStyles.cardBg}`}
                     >
                       <View className="flex-row items-center justify-between mb-2">
-                        <View className="flex-row items-center gap-1.5 flex-1 pr-1">
-                          <View className="bg-brand-navy/10 px-2 py-0.5 rounded border border-brand-navy/10 shrink">
-                            <Text 
-                              className="text-[10px] font-bold text-brand-navy"
-                              numberOfLines={1}
-                            >
-                              {item.course_name ?? "Course"}
-                            </Text>
-                          </View>
-
-                          {cardStyles.isOverdue && (
-                            <View className={`px-1.5 py-0.5 rounded-full ${cardStyles.overdueBadgeBg}`}>
-                              <Text className={`text-[8px] font-black uppercase tracking-wider ${cardStyles.overdueBadgeText}`}>
-                                Overdue
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-
-                        <View className={`px-2 py-0.5 rounded-full ${badge.bg}`}>
-                          <Text
-                            className={`text-[9px] font-black uppercase tracking-wider ${badge.text}`}
+                        <View className="bg-brand-navy/10 px-2 py-0.5 rounded border border-brand-navy/10 shrink">
+                          <Text 
+                            className="text-[10px] font-bold text-brand-navy"
+                            numberOfLines={1}
                           >
-                            {badge.label}
+                            {item.course_name ?? "Course"}
                           </Text>
                         </View>
-                      </View>
 
-                      <View className="flex-row items-start justify-between gap-2">
-                        <Pressable
-                          className="flex-row items-start gap-2 flex-1"
-                          hitSlop={4}
-                        >
-                          <View
-                            className={`w-4 h-4 rounded border items-center justify-center mt-0.5 ${
-                              item.is_completed
-                                ? "bg-brand-navy border-brand-navy"
-                                : "border-brand-slate/40 bg-white"
+                        {cardStyles.isOverdue && (
+                          <View className={`px-1.5 py-0.5 rounded-full ${cardStyles.overdueBadgeBg}`}>
+                            <Text className={`text-[8px] font-black uppercase tracking-wider ${cardStyles.overdueBadgeText}`}>
+                              Overdue
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      
+                      <Text
+                        className={`text-xs font-bold leading-snug my-1 ${
+                          item.is_completed
+                            ? "text-brand-slate/50 line-through"
+                            : "text-brand-navy"
+                        }`}
+                        numberOfLines={2}
+                      >
+                        {item.title}
+                      </Text>
+                      
+                      {formattedDeadline ? (
+                        <View className="flex-row items-center gap-1 mt-2">
+                          <Feather
+                            name="calendar"
+                            size={11}
+                            color={
+                              cardStyles.isOverdue && !item.is_completed
+                                ? "#B91C1C"
+                                : item.is_completed
+                                ? "#A8ADB8"
+                                : "#8B1E3F"
+                            }
+                          />
+                          <Text
+                            className={`text-[10px] font-bold ${
+                              cardStyles.isOverdue && !item.is_completed
+                                ? "text-red-700"
+                                : item.is_completed
+                                ? "text-brand-slate/40 line-through"
+                                : "text-brand-crimson"
                             }`}
                           >
-                            {item.is_completed && (
-                              <Feather name="check" size={10} color="#FFFFFF" />
-                            )}
-                          </View>
-
-                          <View className="flex-1">
-                            <Text
-                              className={`text-xs font-bold leading-snug ${
-                                item.is_completed
-                                  ? "text-brand-slate/50 line-through"
-                                  : "text-brand-navy"
-                              }`}
-                              numberOfLines={2}
-                            >
-                              {item.title}
-                            </Text>
-
-                            {item.description ? (
-                              <Text
-                                className={`text-[11px] leading-relaxed mt-1 ${
-                                  item.is_completed
-                                    ? "text-brand-slate/30"
-                                    : "text-brand-slate"
-                                }`}
-                                numberOfLines={2}
-                              >
-                                {item.description}
-                              </Text>
-                            ) : null}
-
-                            {formattedDeadline && (
-                              <View className="flex-row items-center gap-1 mt-2">
-                                <Feather
-                                  name="calendar"
-                                  size={11}
-                                  color={
-                                    cardStyles.isOverdue && !item.is_completed
-                                      ? "#B91C1C"
-                                      : item.is_completed
-                                      ? "#A8ADB8"
-                                      : "#8B1E3F"
-                                  }
-                                />
-                                <Text
-                                  className={`text-[10px] font-bold ${
-                                    cardStyles.isOverdue && !item.is_completed
-                                      ? "text-red-700"
-                                      : item.is_completed
-                                      ? "text-brand-slate/40 line-through"
-                                      : "text-brand-crimson"
-                                  }`}
-                                  numberOfLines={1}
-                                >
-                                  Due: {formattedDeadline}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                        </Pressable>
-
-                        <Pressable
-                          className="p-1 rounded-md active:bg-brand-crimson/10 self-start"
-                          hitSlop={6}
-                        >
-                          <Feather name="trash-2" size={13} color="#8B1E3F" />
-                        </Pressable>
-                      </View>
-                    </View>
+                            Due: {formattedDeadline}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </Pressable>
                   );
                 })}
               </View>
@@ -500,6 +488,146 @@ export default function Task() {
           </View>
         </View>
       </ScrollView>
+      
+      <Modal
+        visible={!!selectedTask}
+        animationType="none"
+        transparent={true}
+        onRequestClose={closeTaskModal}
+      >
+        <View style={StyleSheet.absoluteFillObject}>
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                backgroundColor: "rgba(20, 33, 61, 0.6)",
+                opacity: fadeAnim,
+              },
+            ]}
+          >
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={closeTaskModal} />
+          </Animated.View>
+          
+          {selectedTask && (() => {
+            const isTaskOverdue = isPastDeadline(selectedTask.deadline);
+
+            return (
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "#FFFFFF",
+                  padding: 24,
+                  transform: [{ translateY: slideAnim }],
+                }}
+                className="rounded-t-3xl shadow-2xl max-h-[80%]"
+              >
+                <View className="items-center mb-4">
+                  <View className="w-12 h-1.5 bg-slate-200 rounded-full" />
+                </View>
+                
+                <View className="flex-row items-start justify-between mb-4">
+                  <View className="flex-1 pr-3">
+                    <View className="flex-row items-center gap-2 mb-2 flex-wrap">
+                      <View className="bg-brand-navy/10 px-2.5 py-1 rounded-md border border-brand-navy/10">
+                        <Text className="text-xs font-bold text-brand-navy">
+                          {selectedTask.course_name ?? "Course"}
+                        </Text>
+                      </View>
+                      <View className={`px-2.5 py-1 rounded-full ${getPriorityBadge(selectedTask.priority).bg}`}>
+                        <Text className={`text-xs font-black uppercase tracking-wider ${getPriorityBadge(selectedTask.priority).text}`}>
+                          {getPriorityBadge(selectedTask.priority).label} Priority
+                        </Text>
+                      </View>
+                      {isTaskOverdue && (
+                        <View className="bg-red-100 px-2.5 py-1 rounded-full">
+                          <Text className="text-xs font-black text-red-700 uppercase tracking-wider">
+                            Overdue
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text className="text-lg font-black text-brand-navy">
+                      {selectedTask.title}
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    onPress={closeTaskModal}
+                    className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center active:bg-slate-200"
+                  >
+                    <Feather name="x" size={18} color="#5B6472" />
+                  </Pressable>
+                </View>
+                
+                <ScrollView showsVerticalScrollIndicator={false} className="mb-6">
+                  {selectedTask.deadline && (
+                    <View className="flex-row items-center gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-brand-hair">
+                      <Feather name="calendar" size={16} color={isTaskOverdue && !selectedTask.is_completed ? "#B91C1C" : "#8B1E3F"} />
+                      <View>
+                        <Text className="text-[10px] font-bold text-brand-slate uppercase">Deadline</Text>
+                        <Text className={`text-xs font-bold ${isTaskOverdue && !selectedTask.is_completed ? "text-red-700" : "text-brand-navy"}`}>
+                          {formatDeadline(selectedTask.deadline)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <Text className="text-xs font-bold text-brand-slate uppercase tracking-wider mb-1">
+                    Description
+                  </Text>
+                  <Text className="text-sm text-brand-navy leading-relaxed bg-brand-card p-4 rounded-xl border border-brand-hair">
+                    {selectedTask.description || "No description provided for this task."}
+                  </Text>
+                </ScrollView>
+                
+                <View className="flex-row items-center gap-3 pt-2 border-t border-brand-hair">
+                  <Pressable
+                    className={`flex-1 py-3.5 rounded-xl items-center justify-center flex-row gap-2 ${
+                      selectedTask.is_completed ? "bg-slate-200" : "bg-brand-navy"
+                    }`}
+                    onPress={() => {
+                      setTasks((prev) =>
+                        prev.map((t) =>
+                          t.id === selectedTask.id
+                            ? { ...t, is_completed: !t.is_completed }
+                            : t
+                        )
+                      );
+                      setSelectedTask((prev) => prev ? { ...prev, is_completed: !prev.is_completed } : null);
+                    }}
+                  >
+                    <Feather
+                      name={selectedTask.is_completed ? "x-circle" : "check-circle"}
+                      size={16}
+                      color={selectedTask.is_completed ? "#14213D" : "#FFFFFF"}
+                    />
+                    <Text
+                      className={`text-xs font-bold ${
+                        selectedTask.is_completed ? "text-brand-navy" : "text-white"
+                      }`}
+                    >
+                      {selectedTask.is_completed ? "Mark Incomplete" : "Mark Complete"}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 items-center justify-center active:bg-red-100"
+                    onPress={() => {
+                      setTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
+                      closeTaskModal();
+                    }}
+                  >
+                    <Feather name="trash-2" size={18} color="#B91C1C" />
+                  </Pressable>
+                </View>
+              </Animated.View>
+            );
+          })()}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
