@@ -64,15 +64,19 @@ export default function Task() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   
-  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  // Unified Task Form Modal State
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [submittingTask, setSubmittingTask] = useState<boolean>(false);
-  const [newTaskTitle, setNewTaskTitle] = useState<string>("");
-  const [newTaskDescription, setNewTaskDescription] = useState<string>("");
-  const [newTaskCourseId, setNewTaskCourseId] = useState<number | null>(null);
-  const [newTaskPriority, setNewTaskPriority] = useState<"low" | "medium" | "high">("medium");
-  const [newTaskDeadline, setNewTaskDeadline] = useState<Date>(new Date());
+  
+  const [taskTitle, setTaskTitle] = useState<string>("");
+  const [taskDescription, setTaskDescription] = useState<string>("");
+  const [taskCourseId, setTaskCourseId] = useState<number | null>(null);
+  const [taskPriority, setTaskPriority] = useState<"low" | "medium" | "high">("medium");
+  const [taskDeadline, setTaskDeadline] = useState<Date>(new Date());
+  
   const [showPickerMode, setShowPickerMode] = useState<"date" | "time" | null>(null);
-  const [addError, setAddError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [titleError, setTitleError] = useState<boolean>(false);
   const [courseError, setCourseError] = useState<boolean>(false);
 
@@ -117,8 +121,8 @@ export default function Task() {
   const slideAnim = useRef(new Animated.Value(300)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const addSlideAnim = useRef(new Animated.Value(300)).current;
-  const addFadeAnim = useRef(new Animated.Value(0)).current;
+  const formSlideAnim = useRef(new Animated.Value(300)).current;
+  const formFadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (selectedTask) {
@@ -140,7 +144,7 @@ export default function Task() {
     }
   }, [selectedTask, fadeAnim, slideAnim]);
 
-  const closeTaskModal = () => {
+  const closeDetailModal = () => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -157,19 +161,31 @@ export default function Task() {
     });
   };
 
-  const openAddTaskModal = () => {
-    resetAddTaskForm();
-    setIsAddModalOpen(true);
-    addFadeAnim.setValue(0);
-    addSlideAnim.setValue(300);
+  const openFormModal = (taskToEdit?: TaskItem) => {
+    resetTaskForm();
+    
+    if (taskToEdit) {
+      setEditingTaskId(taskToEdit.id);
+      setTaskTitle(taskToEdit.title);
+      setTaskDescription(taskToEdit.description || "");
+      setTaskCourseId(taskToEdit.course);
+      setTaskPriority(taskToEdit.priority);
+      if (taskToEdit.deadline) {
+        setTaskDeadline(new Date(taskToEdit.deadline));
+      }
+    }
+
+    setIsTaskModalOpen(true);
+    formFadeAnim.setValue(0);
+    formSlideAnim.setValue(300);
 
     Animated.parallel([
-      Animated.timing(addFadeAnim, {
+      Animated.timing(formFadeAnim, {
         toValue: 1,
         duration: 250,
         useNativeDriver: true,
       }),
-      Animated.timing(addSlideAnim, {
+      Animated.timing(formSlideAnim, {
         toValue: 0,
         duration: 250,
         useNativeDriver: true,
@@ -177,20 +193,21 @@ export default function Task() {
     ]).start();
   };
 
-  const closeAddTaskModal = () => {
+  const closeFormModal = () => {
     Animated.parallel([
-      Animated.timing(addFadeAnim, {
+      Animated.timing(formFadeAnim, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
       }),
-      Animated.timing(addSlideAnim, {
+      Animated.timing(formSlideAnim, {
         toValue: 300,
         duration: 200,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setIsAddModalOpen(false);
+      setIsTaskModalOpen(false);
+      setEditingTaskId(null);
     });
   };
 
@@ -216,8 +233,8 @@ export default function Task() {
     } else {
       if (coursesRes.data) {
         setCourses(coursesRes.data);
-        if (coursesRes.data.length > 0) {
-          setNewTaskCourseId(coursesRes.data[0].id);
+        if (coursesRes.data.length > 0 && !taskCourseId) {
+          setTaskCourseId(coursesRes.data[0].id);
         }
       }
       if (tasksRes.data) setTasks(tasksRes.data);
@@ -343,34 +360,55 @@ export default function Task() {
     if (error) {
       showAlert("Updating Status Failed", error);
     } else {
-      closeTaskModal();
+      closeDetailModal();
       if (id) fetchTasks(id);
     }
   };
 
-  const resetAddTaskForm = () => {
-    setNewTaskTitle("");
-    setNewTaskDescription("");
-    setNewTaskPriority("medium");
-    setNewTaskDeadline(new Date());
-    setShowPickerMode(null);
-    setAddError(null);
-    setTitleError(false);
-    setCourseError(false);
-    if (courses.length > 0) setNewTaskCourseId(courses[0].id);
+  const handleDeleteTask = (taskId: number) => {
+    showConfirm(
+      "Delete Task",
+      "Are you sure you want to delete this task?",
+      async () => {
+        const { error } = await apiRequest(`/tasks/${taskId}/`, {
+          method: "DELETE",
+        });
+
+        if (error) {
+          showAlert("Delete Failed", error);
+        } else {
+          closeDetailModal();
+          if (id) fetchTasks(id);
+        }
+      },
+      "Delete"
+    );
   };
 
-  const handleCreateTask = async () => {
+  const resetTaskForm = () => {
+    setEditingTaskId(null);
+    setTaskTitle("");
+    setTaskDescription("");
+    setTaskPriority("medium");
+    setTaskDeadline(new Date());
+    setShowPickerMode(null);
+    setFormError(null);
+    setTitleError(false);
+    setCourseError(false);
+    if (courses.length > 0) setTaskCourseId(courses[0].id);
+  };
+
+  const handleSaveTask = async () => {
     let hasError = false;
 
-    if (!newTaskTitle.trim()) {
+    if (!taskTitle.trim()) {
       setTitleError(true);
       hasError = true;
     } else {
       setTitleError(false);
     }
 
-    if (!newTaskCourseId) {
+    if (!taskCourseId) {
       setCourseError(true);
       hasError = true;
     } else {
@@ -378,34 +416,40 @@ export default function Task() {
     }
 
     if (hasError) {
-      setAddError("Please fill in all required fields.");
+      setFormError("Please fill in all required fields.");
       return;
     }
 
-    setAddError(null);
+    setFormError(null);
     setSubmittingTask(true);
 
     const payload = {
-      course: newTaskCourseId,
-      title: newTaskTitle.trim(),
-      description: newTaskDescription.trim() || undefined,
-      priority: newTaskPriority,
-      deadline: newTaskDeadline.toISOString(),
-      is_completed: false,
+      course: taskCourseId,
+      title: taskTitle.trim(),
+      description: taskDescription.trim() || undefined,
+      priority: taskPriority,
+      deadline: taskDeadline.toISOString(),
+      is_completed: editingTaskId ? selectedTask?.is_completed : false,
     };
 
-    const { error } = await apiRequest(`/classes/${id}/tasks/`, {
-      method: "POST",
+    const endpoint = editingTaskId
+      ? `/tasks/${editingTaskId}/`
+      : `/classes/${id}/tasks/`;
+    const method = editingTaskId ? "PATCH" : "POST";
+
+    const { error } = await apiRequest(endpoint, {
+      method,
       body: JSON.stringify(payload),
     });
 
     setSubmittingTask(false);
 
     if (error) {
-      setAddError(error);
+      setFormError(error);
     } else {
-      closeAddTaskModal();
-      resetAddTaskForm();
+      closeFormModal();
+      if (editingTaskId) closeDetailModal();
+      resetTaskForm();
       if (id) fetchTasks(id);
     }
   };
@@ -427,7 +471,7 @@ export default function Task() {
 
               <Pressable
                 className="bg-brand-gold px-3.5 py-1.5 rounded-full flex-row items-center gap-1 active:opacity-90"
-                onPress={openAddTaskModal}
+                onPress={() => openFormModal()}
               >
                 <Feather name="plus" size={14} color="#14213D" />
                 <Text className="text-brand-navy text-xs font-bold uppercase tracking-wider">
@@ -681,16 +725,17 @@ export default function Task() {
       
       <Pressable
         className="absolute bottom-6 right-6 w-14 h-14 bg-brand-navy rounded-full items-center justify-center shadow-xl active:bg-brand-navy/90 z-40"
-        onPress={openAddTaskModal}
+        onPress={() => openFormModal()}
       >
         <Feather name="plus" size={24} color="#FFFFFF" />
       </Pressable>
-      
+
+      {/* Task Detail Modal */}
       <Modal
         visible={!!selectedTask}
         animationType="none"
         transparent={true}
-        onRequestClose={closeTaskModal}
+        onRequestClose={closeDetailModal}
       >
         <View style={StyleSheet.absoluteFillObject}>
           <Animated.View
@@ -702,7 +747,7 @@ export default function Task() {
               },
             ]}
           >
-            <Pressable style={StyleSheet.absoluteFillObject} onPress={closeTaskModal} />
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={closeDetailModal} />
           </Animated.View>
           
           {selectedTask && (() => {
@@ -752,7 +797,7 @@ export default function Task() {
                   </View>
 
                   <Pressable
-                    onPress={closeTaskModal}
+                    onPress={closeDetailModal}
                     className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center active:bg-slate-200"
                   >
                     <Feather name="x" size={18} color="#5B6472" />
@@ -802,6 +847,14 @@ export default function Task() {
                   </Pressable>
 
                   <Pressable
+                    onPress={() => openFormModal(selectedTask)}
+                    className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 items-center justify-center active:bg-slate-200"
+                  >
+                    <Feather name="edit-2" size={18} color="#14213D" />
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => handleDeleteTask(selectedTask.id)}
                     className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 items-center justify-center active:bg-red-100"
                   >
                     <Feather name="trash-2" size={18} color="#B91C1C" />
@@ -813,11 +866,12 @@ export default function Task() {
         </View>
       </Modal>
       
+      {/* Unified Add / Edit Task Form Modal */}
       <Modal
-        visible={isAddModalOpen}
+        visible={isTaskModalOpen}
         animationType="none"
         transparent={true}
-        onRequestClose={closeAddTaskModal}
+        onRequestClose={closeFormModal}
       >
         <View style={StyleSheet.absoluteFillObject}>
           <Animated.View
@@ -825,11 +879,11 @@ export default function Task() {
               StyleSheet.absoluteFillObject,
               {
                 backgroundColor: "rgba(20, 33, 61, 0.6)",
-                opacity: addFadeAnim,
+                opacity: formFadeAnim,
               },
             ]}
           >
-            <Pressable style={StyleSheet.absoluteFillObject} onPress={closeAddTaskModal} />
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={closeFormModal} />
           </Animated.View>
 
           <Animated.View
@@ -840,7 +894,7 @@ export default function Task() {
               bottom: 0,
               backgroundColor: "#FFFFFF",
               padding: 24,
-              transform: [{ translateY: addSlideAnim }],
+              transform: [{ translateY: formSlideAnim }],
             }}
             className="rounded-t-3xl shadow-2xl max-h-[85%]"
           >
@@ -850,10 +904,10 @@ export default function Task() {
 
             <View className="flex-row items-center justify-between mb-4 pb-2 border-b border-brand-hair">
               <Text className="text-lg font-black text-brand-navy uppercase tracking-wide">
-                Add New Task
+                {editingTaskId ? "Edit Task" : "Add New Task"}
               </Text>
               <Pressable
-                onPress={closeAddTaskModal}
+                onPress={closeFormModal}
                 className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center active:bg-slate-200"
               >
                 <Feather name="x" size={18} color="#5B6472" />
@@ -866,11 +920,11 @@ export default function Task() {
                   Task Title
                 </Text>
                 <TextInput
-                  value={newTaskTitle}
+                  value={taskTitle}
                   onChangeText={(text) => {
-                    setNewTaskTitle(text);
+                    setTaskTitle(text);
                     if (titleError) setTitleError(false);
-                    if (addError) setAddError(null);
+                    if (formError) setFormError(null);
                   }}
                   placeholder="e.g. Complete Lab Report 3"
                   className={`bg-brand-card border px-4 py-3 rounded-xl text-sm font-semibold text-brand-navy ${
@@ -895,14 +949,14 @@ export default function Task() {
                 >
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 py-1">
                     {courses.map((course) => {
-                      const isSelected = newTaskCourseId === course.id;
+                      const isSelected = taskCourseId === course.id;
                       return (
                         <Pressable
                           key={course.id}
                           onPress={() => {
-                            setNewTaskCourseId(course.id);
+                            setTaskCourseId(course.id);
                             if (courseError) setCourseError(false);
-                            if (addError) setAddError(null);
+                            if (formError) setFormError(null);
                           }}
                           className={`px-3 py-2 rounded-xl border ${
                             isSelected
@@ -935,11 +989,11 @@ export default function Task() {
                 </Text>
                 <View className="flex-row gap-2">
                   {(["low", "medium", "high"] as const).map((p) => {
-                    const isSelected = newTaskPriority === p;
+                    const isSelected = taskPriority === p;
                     return (
                       <Pressable
                         key={p}
-                        onPress={() => setNewTaskPriority(p)}
+                        onPress={() => setTaskPriority(p)}
                         className={`flex-1 py-2.5 rounded-xl border items-center uppercase ${
                           isSelected
                             ? "bg-brand-navy border-brand-navy"
@@ -975,7 +1029,7 @@ export default function Task() {
                   >
                     <Feather name="calendar" size={16} color="#14213D" />
                     <Text className="text-xs font-bold text-brand-navy">
-                      {newTaskDeadline.toLocaleDateString()}
+                      {taskDeadline.toLocaleDateString()}
                     </Text>
                   </Pressable>
 
@@ -990,7 +1044,7 @@ export default function Task() {
                   >
                     <Feather name="clock" size={16} color="#14213D" />
                     <Text className="text-xs font-bold text-brand-navy">
-                      {newTaskDeadline.toLocaleTimeString([], {
+                      {taskDeadline.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
@@ -1005,13 +1059,13 @@ export default function Task() {
                       type={showPickerMode === "date" ? "date" : "time"}
                       value={
                         showPickerMode === "date"
-                          ? dateToYYYYMMDD(newTaskDeadline)
-                          : dateToHHMM(newTaskDeadline)
+                          ? dateToYYYYMMDD(taskDeadline)
+                          : dateToHHMM(taskDeadline)
                       }
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val) {
-                          const updatedDate = new Date(newTaskDeadline);
+                          const updatedDate = new Date(taskDeadline);
                           if (showPickerMode === "date") {
                             const [year, month, day] = val.split("-").map(Number);
                             updatedDate.setFullYear(year, month - 1, day);
@@ -1019,7 +1073,7 @@ export default function Task() {
                             const [hours, minutes] = val.split(":").map(Number);
                             updatedDate.setHours(hours, minutes);
                           }
-                          setNewTaskDeadline(updatedDate);
+                          setTaskDeadline(updatedDate);
                         }
                         setShowPickerMode(null);
                       }}
@@ -1033,12 +1087,12 @@ export default function Task() {
                     />
                   ) : (
                     <DateTimePicker
-                      value={newTaskDeadline}
+                      value={taskDeadline}
                       mode={showPickerMode}
                       display={Platform.OS === "ios" ? "spinner" : "default"}
                       onChange={(event, selectedDate) => {
                         setShowPickerMode(null);
-                        if (selectedDate) setNewTaskDeadline(selectedDate);
+                        if (selectedDate) setTaskDeadline(selectedDate);
                       }}
                     />
                   )
@@ -1050,8 +1104,8 @@ export default function Task() {
                   Description
                 </Text>
                 <TextInput
-                  value={newTaskDescription}
-                  onChangeText={setNewTaskDescription}
+                  value={taskDescription}
+                  onChangeText={setTaskDescription}
                   placeholder="Optional details, notes, or instructions..."
                   multiline
                   numberOfLines={3}
@@ -1060,8 +1114,8 @@ export default function Task() {
                 />
               </View>
 
-              {addError && (
-                <Text className="text-brand-crimson text-xs mt-1">{addError}</Text>
+              {formError && (
+                <Text className="text-brand-crimson text-xs mt-1">{formError}</Text>
               )}
             </ScrollView>
 
@@ -1069,14 +1123,14 @@ export default function Task() {
               className={`py-3.5 rounded-xl items-center justify-center bg-brand-navy ${
                 submittingTask ? "opacity-70" : ""
               }`}
-              onPress={handleCreateTask}
+              onPress={handleSaveTask}
               disabled={submittingTask}
             >
               {submittingTask ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <Text className="text-white text-xs font-bold uppercase tracking-wider">
-                  Save Task
+                  {editingTaskId ? "Update Task" : "Save Task"}
                 </Text>
               )}
             </Pressable>
