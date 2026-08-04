@@ -10,7 +10,6 @@ import {
   Animated,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,8 +17,6 @@ import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import ViewShot, { captureRef } from "react-native-view-shot";
-import * as Sharing from "expo-sharing";
 import { apiRequest } from "../../../utils/api";
 import { CustomAlertModal, AlertState } from "../../../utils/alert";
 
@@ -40,6 +37,19 @@ interface CourseItem {
   name: string;
 }
 
+const dateToHHMM = (date: Date): string => {
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
+const dateToYYYYMMDD = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function Task() {
   const { id } = useLocalSearchParams<{ id: string }>(); 
   const router = useRouter();
@@ -54,8 +64,61 @@ export default function Task() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [submittingTask, setSubmittingTask] = useState<boolean>(false);
+  const [newTaskTitle, setNewTaskTitle] = useState<string>("");
+  const [newTaskDescription, setNewTaskDescription] = useState<string>("");
+  const [newTaskCourseId, setNewTaskCourseId] = useState<number | null>(null);
+  const [newTaskPriority, setNewTaskPriority] = useState<"low" | "medium" | "high">("medium");
+  const [newTaskDeadline, setNewTaskDeadline] = useState<Date>(new Date());
+  const [showPickerMode, setShowPickerMode] = useState<"date" | "time" | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<boolean>(false);
+  const [courseError, setCourseError] = useState<boolean>(false);
+
+  const webPickerInputRef = useRef<HTMLInputElement | null>(null);
+  
+  const [alertConfig, setAlertConfig] = useState<AlertState>({
+    visible: false,
+    title: "",
+    message: "",
+    type: "alert",
+  });
+
+  const showAlert = (title: string, message?: string) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type: "alert",
+    });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    confirmText: string = "Delete"
+  ) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type: "confirm",
+      onConfirm,
+      confirmText,
+    });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig((prev) => ({ ...prev, visible: false }));
+  };
+
   const slideAnim = useRef(new Animated.Value(300)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const addSlideAnim = useRef(new Animated.Value(300)).current;
+  const addFadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (selectedTask) {
@@ -94,6 +157,43 @@ export default function Task() {
     });
   };
 
+  const openAddTaskModal = () => {
+    resetAddTaskForm();
+    setIsAddModalOpen(true);
+    addFadeAnim.setValue(0);
+    addSlideAnim.setValue(300);
+
+    Animated.parallel([
+      Animated.timing(addFadeAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(addSlideAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const closeAddTaskModal = () => {
+    Animated.parallel([
+      Animated.timing(addFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(addSlideAnim, {
+        toValue: 300,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setIsAddModalOpen(false);
+    });
+  };
+
   useEffect(() => {
     if (id) {
       fetchTasks(id);
@@ -109,12 +209,17 @@ export default function Task() {
     ]);
 
     if (coursesRes.error || tasksRes.error) {
-      Alert.alert(
+      showAlert(
         "Error Loading Tasks",
         coursesRes.error || tasksRes.error || "Failed to load tasks and courses"
       );
     } else {
-      if (coursesRes.data) setCourses(coursesRes.data);
+      if (coursesRes.data) {
+        setCourses(coursesRes.data);
+        if (coursesRes.data.length > 0) {
+          setNewTaskCourseId(coursesRes.data[0].id);
+        }
+      }
       if (tasksRes.data) setTasks(tasksRes.data);
     }
 
@@ -223,16 +328,6 @@ export default function Task() {
 
   const courseOptions = ["ALL COURSES", ...courses.map((c) => c.name)];
 
-  const [alertConfig, setAlertConfig] = useState<AlertState>({
-    visible: false,
-    title: "",
-    message: "",
-  });
-
-  const showAlert = (title: string, message?: string) => {
-    setAlertConfig({ visible: true, title, message, type: "alert" });
-  };
-
   const handleMarkAsComplete = async (task: TaskItem) => {
     const updatedStatus = !task.is_completed;
     const completionDate = updatedStatus ? new Date().toISOString() : null;
@@ -253,28 +348,92 @@ export default function Task() {
     }
   };
 
+  const resetAddTaskForm = () => {
+    setNewTaskTitle("");
+    setNewTaskDescription("");
+    setNewTaskPriority("medium");
+    setNewTaskDeadline(new Date());
+    setShowPickerMode(null);
+    setAddError(null);
+    setTitleError(false);
+    setCourseError(false);
+    if (courses.length > 0) setNewTaskCourseId(courses[0].id);
+  };
+
+  const handleCreateTask = async () => {
+    let hasError = false;
+
+    if (!newTaskTitle.trim()) {
+      setTitleError(true);
+      hasError = true;
+    } else {
+      setTitleError(false);
+    }
+
+    if (!newTaskCourseId) {
+      setCourseError(true);
+      hasError = true;
+    } else {
+      setCourseError(false);
+    }
+
+    if (hasError) {
+      setAddError("Please fill in all required fields.");
+      return;
+    }
+
+    setAddError(null);
+    setSubmittingTask(true);
+
+    const payload = {
+      course: newTaskCourseId,
+      title: newTaskTitle.trim(),
+      description: newTaskDescription.trim() || undefined,
+      priority: newTaskPriority,
+      deadline: newTaskDeadline.toISOString(),
+      is_completed: false,
+    };
+
+    const { error } = await apiRequest(`/classes/${id}/tasks/`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    setSubmittingTask(false);
+
+    if (error) {
+      setAddError(error);
+    } else {
+      closeAddTaskModal();
+      resetAddTaskForm();
+      if (id) fetchTasks(id);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       <StatusBar style="light" />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="bg-brand-navy pt-4 pb-8 items-center">
-          <View
-            style={{
-              width: "100%",
-              maxWidth: width,
-              paddingHorizontal: wide ? 32 : 24,
-            }}
-          >
+          <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center gap-2">
                 <View className="w-8 h-8 rounded-lg bg-brand-gold items-center justify-center">
                   <Text className="text-brand-navy text-base font-black">S</Text>
                 </View>
-                <Text className="text-white text-lg font-bold tracking-wide">
-                  SCHEDIFY
-                </Text>
+                <Text className="text-white text-lg font-bold tracking-wide">SCHEDIFY</Text>
               </View>
+
+              <Pressable
+                className="bg-brand-gold px-3.5 py-1.5 rounded-full flex-row items-center gap-1 active:opacity-90"
+                onPress={openAddTaskModal}
+              >
+                <Feather name="plus" size={14} color="#14213D" />
+                <Text className="text-brand-navy text-xs font-bold uppercase tracking-wider">
+                  Add Task
+                </Text>
+              </Pressable>
             </View>
 
             <Text className="text-white text-xl font-black uppercase tracking-wide text-center">
@@ -452,7 +611,6 @@ export default function Task() {
                       className={`w-[48.5%] rounded-2xl border p-3 shadow-2xs flex-col justify-between ${cardStyles.cardBg}`}
                     >
                       <View className="flex-col gap-1.5">
-                        {/* Course Badge */}
                         <View className="flex-row items-center justify-between">
                           <View className="bg-brand-navy/10 px-2 py-0.5 rounded border border-brand-navy/10 shrink">
                             <Text 
@@ -520,6 +678,13 @@ export default function Task() {
           </View>
         </View>
       </ScrollView>
+      
+      <Pressable
+        className="absolute bottom-6 right-6 w-14 h-14 bg-brand-navy rounded-full items-center justify-center shadow-xl active:bg-brand-navy/90 z-40"
+        onPress={openAddTaskModal}
+      >
+        <Feather name="plus" size={24} color="#FFFFFF" />
+      </Pressable>
       
       <Modal
         visible={!!selectedTask}
@@ -638,10 +803,6 @@ export default function Task() {
 
                   <Pressable
                     className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 items-center justify-center active:bg-red-100"
-                    onPress={() => {
-                      setTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
-                      closeTaskModal();
-                    }}
                   >
                     <Feather name="trash-2" size={18} color="#B91C1C" />
                   </Pressable>
@@ -651,6 +812,279 @@ export default function Task() {
           })()}
         </View>
       </Modal>
+      
+      <Modal
+        visible={isAddModalOpen}
+        animationType="none"
+        transparent={true}
+        onRequestClose={closeAddTaskModal}
+      >
+        <View style={StyleSheet.absoluteFillObject}>
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                backgroundColor: "rgba(20, 33, 61, 0.6)",
+                opacity: addFadeAnim,
+              },
+            ]}
+          >
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={closeAddTaskModal} />
+          </Animated.View>
+
+          <Animated.View
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "#FFFFFF",
+              padding: 24,
+              transform: [{ translateY: addSlideAnim }],
+            }}
+            className="rounded-t-3xl shadow-2xl max-h-[85%]"
+          >
+            <View className="items-center mb-2">
+              <View className="w-12 h-1.5 bg-slate-200 rounded-full" />
+            </View>
+
+            <View className="flex-row items-center justify-between mb-4 pb-2 border-b border-brand-hair">
+              <Text className="text-lg font-black text-brand-navy uppercase tracking-wide">
+                Add New Task
+              </Text>
+              <Pressable
+                onPress={closeAddTaskModal}
+                className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center active:bg-slate-200"
+              >
+                <Feather name="x" size={18} color="#5B6472" />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} className="space-y-4 mb-4">
+              <View>
+                <Text className="text-xs font-bold text-brand-slate uppercase mb-1">
+                  Task Title
+                </Text>
+                <TextInput
+                  value={newTaskTitle}
+                  onChangeText={(text) => {
+                    setNewTaskTitle(text);
+                    if (titleError) setTitleError(false);
+                    if (addError) setAddError(null);
+                  }}
+                  placeholder="e.g. Complete Lab Report 3"
+                  className={`bg-brand-card border px-4 py-3 rounded-xl text-sm font-semibold text-brand-navy ${
+                    titleError ? "border-brand-crimson bg-red-50/20" : "border-brand-hair"
+                  }`}
+                />
+                {titleError && (
+                  <Text className="text-brand-crimson text-[11px] font-bold mt-1">
+                    Task title is required.
+                  </Text>
+                )}
+              </View>
+
+              <View>
+                <Text className="text-xs font-bold text-brand-slate uppercase mb-1">
+                  Course
+                </Text>
+                <View
+                  className={`p-1 rounded-2xl ${
+                    courseError ? "border border-brand-crimson bg-red-50/20" : ""
+                  }`}
+                >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 py-1">
+                    {courses.map((course) => {
+                      const isSelected = newTaskCourseId === course.id;
+                      return (
+                        <Pressable
+                          key={course.id}
+                          onPress={() => {
+                            setNewTaskCourseId(course.id);
+                            if (courseError) setCourseError(false);
+                            if (addError) setAddError(null);
+                          }}
+                          className={`px-3 py-2 rounded-xl border ${
+                            isSelected
+                              ? "bg-brand-navy border-brand-navy"
+                              : "bg-white border-brand-hair"
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-bold ${
+                              isSelected ? "text-white" : "text-brand-slate"
+                            }`}
+                          >
+                            {course.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+                {courseError && (
+                  <Text className="text-brand-crimson text-[11px] font-bold mt-1">
+                    Please select a course.
+                  </Text>
+                )}
+              </View>
+
+              <View>
+                <Text className="text-xs font-bold text-brand-slate uppercase mb-1">
+                  Priority
+                </Text>
+                <View className="flex-row gap-2">
+                  {(["low", "medium", "high"] as const).map((p) => {
+                    const isSelected = newTaskPriority === p;
+                    return (
+                      <Pressable
+                        key={p}
+                        onPress={() => setNewTaskPriority(p)}
+                        className={`flex-1 py-2.5 rounded-xl border items-center uppercase ${
+                          isSelected
+                            ? "bg-brand-navy border-brand-navy"
+                            : "bg-white border-brand-hair"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-bold capitalize ${
+                            isSelected ? "text-white" : "text-brand-slate"
+                          }`}
+                        >
+                          {p}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View>
+                <Text className="text-xs font-bold text-brand-slate uppercase mb-1">
+                  Deadline
+                </Text>
+                <View className="flex-row gap-2">
+                  <Pressable
+                    className="flex-1 bg-brand-card border border-brand-hair p-3 rounded-xl flex-row items-center gap-2"
+                    onPress={() => {
+                      setShowPickerMode("date");
+                      if (Platform.OS === "web") {
+                        setTimeout(() => webPickerInputRef.current?.showPicker?.(), 50);
+                      }
+                    }}
+                  >
+                    <Feather name="calendar" size={16} color="#14213D" />
+                    <Text className="text-xs font-bold text-brand-navy">
+                      {newTaskDeadline.toLocaleDateString()}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    className="flex-1 bg-brand-card border border-brand-hair p-3 rounded-xl flex-row items-center gap-2"
+                    onPress={() => {
+                      setShowPickerMode("time");
+                      if (Platform.OS === "web") {
+                        setTimeout(() => webPickerInputRef.current?.showPicker?.(), 50);
+                      }
+                    }}
+                  >
+                    <Feather name="clock" size={16} color="#14213D" />
+                    <Text className="text-xs font-bold text-brand-navy">
+                      {newTaskDeadline.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {showPickerMode && (
+                  Platform.OS === "web" ? (
+                    <input
+                      ref={webPickerInputRef}
+                      type={showPickerMode === "date" ? "date" : "time"}
+                      value={
+                        showPickerMode === "date"
+                          ? dateToYYYYMMDD(newTaskDeadline)
+                          : dateToHHMM(newTaskDeadline)
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) {
+                          const updatedDate = new Date(newTaskDeadline);
+                          if (showPickerMode === "date") {
+                            const [year, month, day] = val.split("-").map(Number);
+                            updatedDate.setFullYear(year, month - 1, day);
+                          } else {
+                            const [hours, minutes] = val.split(":").map(Number);
+                            updatedDate.setHours(hours, minutes);
+                          }
+                          setNewTaskDeadline(updatedDate);
+                        }
+                        setShowPickerMode(null);
+                      }}
+                      style={{
+                        position: "absolute",
+                        opacity: 0,
+                        pointerEvents: "none",
+                        width: 0,
+                        height: 0,
+                      }}
+                    />
+                  ) : (
+                    <DateTimePicker
+                      value={newTaskDeadline}
+                      mode={showPickerMode}
+                      display={Platform.OS === "ios" ? "spinner" : "default"}
+                      onChange={(event, selectedDate) => {
+                        setShowPickerMode(null);
+                        if (selectedDate) setNewTaskDeadline(selectedDate);
+                      }}
+                    />
+                  )
+                )}
+              </View>
+
+              <View>
+                <Text className="text-xs font-bold text-brand-slate uppercase mb-1">
+                  Description
+                </Text>
+                <TextInput
+                  value={newTaskDescription}
+                  onChangeText={setNewTaskDescription}
+                  placeholder="Optional details, notes, or instructions..."
+                  multiline
+                  numberOfLines={3}
+                  style={{ textAlignVertical: "top" }}
+                  className="bg-brand-card border border-brand-hair p-3 rounded-xl text-sm font-semibold text-brand-navy min-h-[80px]"
+                />
+              </View>
+
+              {addError && (
+                <Text className="text-brand-crimson text-xs mt-1">{addError}</Text>
+              )}
+            </ScrollView>
+
+            <Pressable
+              className={`py-3.5 rounded-xl items-center justify-center bg-brand-navy ${
+                submittingTask ? "opacity-70" : ""
+              }`}
+              onPress={handleCreateTask}
+              disabled={submittingTask}
+            >
+              {submittingTask ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text className="text-white text-xs font-bold uppercase tracking-wider">
+                  Save Task
+                </Text>
+              )}
+            </Pressable>
+          </Animated.View>
+        </View>
+      </Modal>
+      
+      <CustomAlertModal state={alertConfig} onClose={hideAlert} />
     </SafeAreaView>
   );
 }
