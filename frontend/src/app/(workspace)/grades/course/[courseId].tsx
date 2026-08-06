@@ -29,13 +29,13 @@ export default function CourseGradeManager() {
   const wide = width >= 700;
 
   const [addGradeModal, setAddGradeModal] = useState(false);
-
-  const [editComponentModal, setEditComponentModal] = useState(false);
+  
+  const [componentModal, setComponentModal] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState<GradeComponent | null>(null);
-  const [editedName, setEditedName] = useState("");
-  const [editedWeight, setEditedWeight] = useState("");
-  const [editError, setEditError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [componentName, setComponentName] = useState("");
+  const [componentWeight, setComponentWeight] = useState("");
+  const [componentError, setComponentError] = useState<string | null>(null);
+  const [isSavingComponent, setIsSavingComponent] = useState(false);
 
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,47 +59,52 @@ export default function CourseGradeManager() {
     }, [loadCourse])
   );
 
-  const openEditComponentModal = (category: GradeComponent) => {
+  const openComponentModal = (category: GradeComponent | null = null) => {
     setSelectedComponent(category);
-    setEditedName(category.name);
-    setEditedWeight(category.weight.toString());
-    setEditError(null);
-    setEditComponentModal(true);
+    setComponentName(category ? category.name : "");
+    setComponentWeight(category ? category.weight.toString() : "");
+    setComponentError(null);
+    setComponentModal(true);
   };
 
-  const closeEditComponentModal = () => {
-    setEditComponentModal(false);
+  const closeComponentModal = () => {
+    setComponentModal(false);
     setSelectedComponent(null);
-    setEditError(null);
+    setComponentName("");
+    setComponentWeight("");
+    setComponentError(null);
   };
 
-  const handleEditComponent = async () => {
-    if (!selectedComponent) return;
-    if (!editedName.trim() || !editedWeight.trim()) {
-      setEditError("Please enter both a name and weight.");
+  const handleSaveComponent = async () => {
+    if (!componentName.trim() || !componentWeight.trim()) {
+      setComponentError("Please enter both a name and weight.");
       return;
     }
 
-    setEditError(null);
-    setIsEditing(true);
+    setComponentError(null);
+    setIsSavingComponent(true);
 
-    const { error } = await apiRequest(
-      `/grade-components/${selectedComponent.id}/`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({
-          name: editedName.trim(),
-          weight: parseFloat(editedWeight),
-        }),
-      }
-    );
+    const isEditing = !!selectedComponent;
+    const url = isEditing
+      ? `/grade-components/${selectedComponent.id}/`
+      : `/courses/${courseId}/grade-components/`;
+    const method = isEditing ? "PATCH" : "POST";
 
-    setIsEditing(false);
+    const payload = isEditing
+      ? { name: componentName.trim(), weight: parseFloat(componentWeight) }
+      : { course: courseId, name: componentName.trim(), weight: parseFloat(componentWeight) };
+
+    const { error } = await apiRequest(url, {
+      method,
+      body: JSON.stringify(payload),
+    });
+
+    setIsSavingComponent(false);
 
     if (error) {
-      setEditError(error);
+      setComponentError(error);
     } else {
-      closeEditComponentModal();
+      closeComponentModal();
       loadCourse();
     }
   };
@@ -145,12 +150,12 @@ export default function CourseGradeManager() {
               </Pressable>
 
               <Pressable
-                className="bg-brand-gold px-3.5 py-1.5 rounded-full flex-row items-center gap-1 active:opacity-90"
-                onPress={() => setAddGradeModal(true)}
+                className="bg-white/15 px-3 py-1.5 rounded-full flex-row items-center gap-1 active:bg-white/25"
+                onPress={() => openComponentModal(null)}
               >
-                <Feather name="plus" size={14} color="#14213D" />
-                <Text className="text-brand-navy text-xs font-bold uppercase tracking-wider">
-                  Add Grade
+                <Feather name="folder-plus" size={14} color="#FFFFFF" />
+                <Text className="text-white text-xs font-bold uppercase tracking-wider">
+                  Add Component
                 </Text>
               </Pressable>
             </View>
@@ -158,7 +163,7 @@ export default function CourseGradeManager() {
             <Text className="text-brand-gold text-xs font-black uppercase tracking-widest text-center">
               {course.name}
             </Text>
-            
+
             <View className="bg-white/10 rounded-2xl p-4 border border-white/15 backdrop-blur-md mt-5 flex-row items-center justify-around">
               <View className="items-center">
                 <Text className="text-brand-gold text-3xl font-black">
@@ -204,10 +209,19 @@ export default function CourseGradeManager() {
             </View>
 
             {categories.length === 0 ? (
-              <View className="items-center py-8">
+              <View className="items-center py-8 gap-3">
                 <Text className="text-brand-slate text-xs font-medium text-center">
-                  No grade categories yet. Tap "Add Grade" to get started.
+                  No grade components yet. Add a component to get started.
                 </Text>
+                <Pressable
+                  className="bg-brand-navy px-4 py-2 rounded-full flex-row items-center gap-1.5 active:opacity-90"
+                  onPress={() => openComponentModal(null)}
+                >
+                  <Feather name="folder-plus" size={14} color="#FFFFFF" />
+                  <Text className="text-white text-xs font-bold uppercase tracking-wider">
+                    Add Component
+                  </Text>
+                </Pressable>
               </View>
             ) : (
               <View className="gap-4">
@@ -229,7 +243,7 @@ export default function CourseGradeManager() {
                           <Pressable
                             hitSlop={6}
                             className="p-1 active:opacity-60"
-                            onPress={() => openEditComponentModal(category)}
+                            onPress={() => openComponentModal(category)}
                           >
                             <Feather name="edit-2" size={12} color="#5B6472" />
                           </Pressable>
@@ -291,27 +305,27 @@ export default function CourseGradeManager() {
             )}
           </View>
         </View>
-
+        
         <Modal
-          visible={editComponentModal}
+          visible={componentModal}
           transparent
           animationType="fade"
-          onRequestClose={closeEditComponentModal}
+          onRequestClose={closeComponentModal}
         >
           <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
             <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
               <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-3">
-                Edit Component
+                {selectedComponent ? "Edit Component" : "Add Grade Component"}
               </Text>
 
               <TextInput
                 className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium mb-2"
-                placeholder="Component Name (e.g., Quizzes)"
+                placeholder="Component Name (e.g., Exams, Quizzes)"
                 placeholderTextColor="#A8ADB8"
-                value={editedName}
+                value={componentName}
                 onChangeText={(text) => {
-                  setEditedName(text);
-                  if (editError) setEditError(null);
+                  setComponentName(text);
+                  if (componentError) setComponentError(null);
                 }}
                 autoFocus
               />
@@ -321,41 +335,43 @@ export default function CourseGradeManager() {
                 placeholder="Weight (%)"
                 placeholderTextColor="#A8ADB8"
                 keyboardType="numeric"
-                value={editedWeight}
+                value={componentWeight}
                 onChangeText={(text) => {
-                  setEditedWeight(text);
-                  if (editError) setEditError(null);
+                  setComponentWeight(text);
+                  if (componentError) setComponentError(null);
                 }}
               />
 
-              {editError && (
-                <Text className="text-brand-crimson text-xs mb-2">{editError}</Text>
+              {componentError && (
+                <Text className="text-brand-crimson text-xs mb-2">{componentError}</Text>
               )}
 
               <View className="flex-row justify-end gap-2 mt-3">
                 <Pressable
                   className="px-4 py-2 rounded-full border border-brand-hair bg-white"
-                  onPress={closeEditComponentModal}
+                  onPress={closeComponentModal}
                 >
                   <Text className="text-brand-slate text-xs font-bold uppercase">Cancel</Text>
                 </Pressable>
 
                 <Pressable
                   className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90 min-w-[70px] items-center"
-                  onPress={handleEditComponent}
-                  disabled={isEditing}
+                  onPress={handleSaveComponent}
+                  disabled={isSavingComponent}
                 >
-                  {isEditing ? (
+                  {isSavingComponent ? (
                     <ActivityIndicator size="small" color="#14213D" />
                   ) : (
-                    <Text className="text-brand-navy text-xs font-black uppercase">Save</Text>
+                    <Text className="text-brand-navy text-xs font-black uppercase">
+                      {selectedComponent ? "Save" : "Add"}
+                    </Text>
                   )}
                 </Pressable>
               </View>
             </View>
           </View>
         </Modal>
-
+        
         <Modal
           visible={addGradeModal}
           transparent
