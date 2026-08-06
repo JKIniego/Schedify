@@ -12,6 +12,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'start_time',
             'end_time',
             'hex_code',
+            'units',
             'created_at',
             'updated_at',
         )

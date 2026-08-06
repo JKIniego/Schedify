@@ -25,6 +25,7 @@ class Course(models.Model):
     end_time = models.TimeField()
     
     hex_code = models.CharField(max_length=7, default="#A5D6A7")
+    units = models.PositiveSmallIntegerField(default=3)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
