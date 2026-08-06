@@ -44,3 +44,15 @@ class TaskSerializer(serializers.ModelSerializer):
             'updated_at',
         )
         read_only_fields = ('id', 'created_at', 'updated_at')
+
+class GradeComponentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.GradeComponent
+        fields = ('id', 'course', 'name', 'weight')
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
+class GradeEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.GradeEntry
+        fields = ('id', 'component', 'name', 'score', 'max_score')
+        read_only_fields = ('id', 'created_at', 'updated_at')

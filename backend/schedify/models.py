@@ -76,5 +76,28 @@ class Task(models.Model):
     def __str__(self):
         return f"{self.title} - {self.course.name}"
 
+class GradeComponent(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='grade_components')
+    name = models.CharField(max_length=255)
+    weight = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('course', 'name')
+
     def __str__(self):
-        return f"{self.title} - {self.course.name}"
+        return f"{self.course} - {self.name}"
+
+class GradeEntry(models.Model):
+    component = models.ForeignKey(GradeComponent, on_delete=models.CASCADE, related_name='grade_entries')
+    name = models.CharField(max_length=255)
+    score = models.FloatField(default=0)
+    max_score = models.FloatField(default=0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.component} ({self.component.course})"
