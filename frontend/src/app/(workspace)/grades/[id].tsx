@@ -52,7 +52,8 @@ const COURSES = [
 ];
 
 export default function Grades() {
-  const { id } = useLocalSearchParams<{ id: string }>(); 
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 700;
   
@@ -162,13 +163,25 @@ export default function Grades() {
                             Passed
                           </Text>
                         </View>
+                        
+                        <Pressable
+                          className="flex-row items-center gap-1.5 bg-brand-navy px-3 py-1.5 rounded-full active:opacity-90"
+                          onPress={() =>
+                            router.push(`./course/${item.id}`)
+                          }
+                          hitSlop={6}
+                        >
+                          <Text className="text-white text-[10px] font-bold uppercase tracking-wider">
+                            Manage
+                          </Text>
+                          <Feather name="chevron-right" size={12} color="#FFFFFF" />
+                        </Pressable>
                       </View>
                     )}
                   </Pressable>
                 );
               })}
             </View>
-
           </View>
         </View>
       </ScrollView>

@@ -70,6 +70,13 @@ export default function WorkspaceLayout() {
         }}
       />
       <Tabs.Screen
+        name="grades/course/[courseId]"
+        options={{
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
         name="back-to-dashboard"
         options={{
           href: "/dashboard",
