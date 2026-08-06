@@ -365,26 +365,6 @@ export default function Task() {
     }
   };
 
-  const handleDeleteTask = (taskId: number) => {
-    showConfirm(
-      "Delete Task",
-      "Are you sure you want to delete this task?",
-      async () => {
-        const { error } = await apiRequest(`/tasks/${taskId}/`, {
-          method: "DELETE",
-        });
-
-        if (error) {
-          showAlert("Delete Failed", error);
-        } else {
-          closeDetailModal();
-          if (id) fetchTasks(id);
-        }
-      },
-      "Delete"
-    );
-  };
-
   const resetTaskForm = () => {
     setEditingTaskId(null);
     setTaskTitle("");
@@ -452,6 +432,26 @@ export default function Task() {
       resetTaskForm();
       if (id) fetchTasks(id);
     }
+  };
+
+  const handleDeleteTask = (taskId: number) => {
+    showConfirm(
+      "Delete Task",
+      "Are you sure you want to delete this task?",
+      async () => {
+        const { error } = await apiRequest(`/tasks/${taskId}/`, {
+          method: "DELETE",
+        });
+
+        if (error) {
+          showAlert("Delete Failed", error);
+        } else {
+          closeDetailModal();
+          if (id) fetchTasks(id);
+        }
+      },
+      "Delete"
+    );
   };
 
   return (
@@ -729,8 +729,7 @@ export default function Task() {
       >
         <Feather name="plus" size={24} color="#FFFFFF" />
       </Pressable>
-
-      {/* Task Detail Modal */}
+      
       <Modal
         visible={!!selectedTask}
         animationType="none"
@@ -866,7 +865,6 @@ export default function Task() {
         </View>
       </Modal>
       
-      {/* Unified Add / Edit Task Form Modal */}
       <Modal
         visible={isTaskModalOpen}
         animationType="none"
