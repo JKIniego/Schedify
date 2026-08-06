@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 class ClassSchedule(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='schedules')
@@ -33,3 +34,47 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.room})"
+
+class Task(models.Model):
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='tasks')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    deadline = models.DateTimeField(default=timezone.now)
+
+    is_completed = models.BooleanField(default=False)
+    mark_as_completed_date = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['is_completed', '-deadline', '-created_at']
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old_instance = Task.objects.get(pk=self.pk)
+
+            if not old_instance.is_completed and self.is_completed:
+                self.mark_as_completed_date = timezone.now()
+            elif old_instance.is_completed and not self.is_completed:
+                self.mark_as_completed_date = None
+        else:
+            if self.is_completed:
+                self.mark_as_completed_date = timezone.now()
+            else:
+                self.mark_as_completed_date = None
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.title} - {self.course.name}"
+
+    def __str__(self):
+        return f"{self.title} - {self.course.name}"

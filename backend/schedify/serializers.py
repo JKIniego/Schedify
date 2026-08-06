@@ -24,3 +24,23 @@ class ClassScheduleSerializer(serializers.ModelSerializer):
         model = models.ClassSchedule
         fields = ('id', 'title', 'is_active', 'courses', 'created_at', 'updated_at')
         read_only_fields = ('id', 'created_at', 'updated_at')
+
+class TaskSerializer(serializers.ModelSerializer):
+    course_name = serializers.CharField(source='course.name', read_only=True)
+
+    class Meta:
+        model = models.Task
+        fields = (
+            'id',
+            'course',
+            'course_name',
+            'title',
+            'description',
+            'priority',
+            'deadline',
+            'is_completed',
+            'mark_as_completed_date',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = ('id', 'created_at', 'updated_at')

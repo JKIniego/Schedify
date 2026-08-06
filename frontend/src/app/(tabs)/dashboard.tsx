@@ -337,7 +337,7 @@ export default function Dashboard() {
                         {isActive && (
                           <Pressable
                             className="flex-row items-center gap-1.5 bg-white border border-brand-hair px-3.5 py-1.5 rounded-full active:bg-brand-hair/30"
-                            onPress={() => router.push(`../schedule/${item.id}`)}
+                            onPress={() => router.push(`../(workspace)/schedule/${item.id}`)}
                             hitSlop={6}
                           >
                             <Feather name="eye" size={12} color="#14213D" />

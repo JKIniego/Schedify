@@ -20,8 +20,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
-import { apiRequest } from "../../utils/api";
-import { CustomAlertModal, AlertState } from "../../utils/alert";
+import { apiRequest } from "../../../utils/api";
+import { CustomAlertModal, AlertState } from "../../../utils/alert";
 
 type DayType = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
 
@@ -138,7 +138,7 @@ const mapApiToGridSlot = (course: CourseAPIResponse): GridSlot => {
 };
 
 export default function Schedule() {
-  const { id: scheduleId } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>(); 
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 700;
@@ -201,15 +201,15 @@ export default function Schedule() {
   const webTimeInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (scheduleId) {
+    if (id) {
       fetchCourses();
     }
-  }, [scheduleId]);
+  }, [id]);
 
   const fetchCourses = async () => {
     setLoading(true);
     const { data, error } = await apiRequest<CourseAPIResponse[]>(
-      `/classes/${scheduleId}/courses/`
+      `/classes/${id}/courses/`
     );
 
     if (error) {
@@ -362,7 +362,7 @@ export default function Schedule() {
     const isEditing = Boolean(editingCourseId);
     const endpoint = isEditing
       ? `/courses/${editingCourseId}/`
-      : `/classes/${scheduleId}/courses/`;
+      : `/classes/${id}/courses/`;
     const method = isEditing ? "PATCH" : "POST";
 
     const { data, error } = await apiRequest<CourseAPIResponse>(endpoint, {
@@ -828,13 +828,6 @@ export default function Schedule() {
             }}
           >
             <View className="flex-row items-center justify-between mb-4">
-              <Pressable
-                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
-                onPress={() => router.back()}
-              >
-                <Feather name="arrow-left" size={18} color="#FFFFFF" />
-              </Pressable>
-
               <View className="flex-row items-center gap-2">
                 <View className="w-8 h-8 rounded-lg bg-brand-gold items-center justify-center">
                   <Text className="text-brand-navy text-base font-black">S</Text>
