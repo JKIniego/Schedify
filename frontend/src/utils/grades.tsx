@@ -17,15 +17,16 @@ export function convertPercentageToGrade(percentage: number): number {
 }
 
 export function componentPercentage(component: GradeComponent): number {
-  const totalScore = component.entries.reduce((sum, e) => sum + e.score, 0);
-  const totalMax = component.entries.reduce((sum, e) => sum + e.max_score, 0);
+  const entries = component.entries ?? [];
+  const totalScore = entries.reduce((sum, e) => sum + e.score, 0);
+  const totalMax = entries.reduce((sum, e) => sum + e.max_score, 0);
   return totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
 }
 
-export function courseFinalPercentage(course: Course): number {
-  const components = course.grade_components;
+export function courseFinalPercentage(course: Course): number | null {
+  const components = course.grade_components ?? [];
   const totalWeight = components.reduce((sum, c) => sum + parseFloat(c.weight), 0);
-  if (totalWeight === 0) return 0;
+  if (totalWeight === 0) return null;
 
   const weightedSum = components.reduce(
     (sum, c) => sum + componentPercentage(c) * parseFloat(c.weight),
@@ -34,12 +35,19 @@ export function courseFinalPercentage(course: Course): number {
   return weightedSum / totalWeight;
 }
 
-export function gwa(courses: Course[]): number {
-  const totalUnits = courses.reduce((sum, c) => sum + c.units, 0);
-  if (totalUnits === 0) return 0;
-  const weighted = courses.reduce(
-    (sum, c) => sum + convertPercentageToGrade(courseFinalPercentage(c)) * c.units,
-    0
-  );
+export function courseGrade(course: Course): number | null {
+  const pct = courseFinalPercentage(course);
+  return pct === null ? null : convertPercentageToGrade(pct);
+}
+
+export function gwa(courses: Course[]): number | null {
+  const graded = courses
+    .map((c) => ({ course: c, grade: courseGrade(c) }))
+    .filter((g): g is { course: Course; grade: number } => g.grade !== null);
+
+  const totalUnits = graded.reduce((sum, g) => sum + g.course.units, 0);
+  if (totalUnits === 0) return null;
+
+  const weighted = graded.reduce((sum, g) => sum + g.grade * g.course.units, 0);
   return weighted / totalUnits;
 }

@@ -12,11 +12,7 @@ import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { apiRequest } from "../../../utils/api";
-import {
-  Course,
-  convertPercentageToGrade,
-  courseFinalPercentage,
-} from "../../../utils/grades";
+import { Course, courseGrade, gwa as computeGwa } from "../../../utils/grades";
 
 export default function Grades() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -49,15 +45,11 @@ export default function Grades() {
 
   const courseGrades = courses.map((course) => ({
     course,
-    percentage: courseFinalPercentage(course),
-    grade: convertPercentageToGrade(courseFinalPercentage(course)),
+    grade: courseGrade(course), // number | null - null means no gradeable data yet
   }));
 
   const totalUnits = courseGrades.reduce((sum, c) => sum + c.course.units, 0);
-  const gwa =
-    totalUnits > 0
-      ? courseGrades.reduce((sum, c) => sum + c.grade * c.course.units, 0) / totalUnits
-      : 0;
+  const overallGwa = computeGwa(courses); // number | null
 
   if (loading) {
     return (
@@ -100,7 +92,7 @@ export default function Grades() {
 
               <View className="flex-row items-baseline gap-2">
                 <Text className="text-brand-gold text-4xl font-black tracking-tight">
-                  {gwa > 0 ? gwa.toFixed(3) : "--"}
+                  {overallGwa !== null ? overallGwa.toFixed(3) : "N/A"}
                 </Text>
               </View>
 
@@ -157,7 +149,7 @@ export default function Grades() {
 
                       <View className="bg-brand-navy/5 border border-brand-navy/10 px-3 py-1.5 rounded-xl items-center">
                         <Text className="text-brand-navy font-black text-base">
-                          {grade.toFixed(2)}
+                          {grade !== null ? grade.toFixed(2) : "N/A"}
                         </Text>
                         <Text className="text-brand-slate text-[9px] font-bold uppercase tracking-wider">
                           Grade
@@ -168,9 +160,13 @@ export default function Grades() {
                     {isSelected && (
                       <View className="mt-3 pt-3 border-t border-brand-hair/80 flex-row items-center justify-between">
                         <View className="flex-row items-center gap-1.5">
-                          <Feather name="award" size={12} color="#14213D" />
+                          <Feather
+                            name={grade !== null ? "award" : "clock"}
+                            size={12}
+                            color="#14213D"
+                          />
                           <Text className="text-brand-navy text-xs font-bold">
-                            {grade <= 3.0 ? "Passed" : "At risk"}
+                            {grade === null ? "No grades yet" : grade <= 3.0 ? "Passed" : "At risk"}
                           </Text>
                         </View>
 
