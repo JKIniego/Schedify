@@ -21,6 +21,7 @@ import {
   componentPercentage,
   GradeComponent,
 } from "../../../../utils/grades";
+import { CustomAlertModal, AlertState } from "../../../../utils/alert";
 
 export default function CourseGradeManager() {
   const { courseId } = useLocalSearchParams<{ courseId: string }>();
@@ -29,6 +30,15 @@ export default function CourseGradeManager() {
   const wide = width >= 700;
 
   const [addGradeModal, setAddGradeModal] = useState(false);
+  
+  const [alertState, setAlertState] = useState<AlertState>({
+    visible: false,
+    title: "",
+  });
+
+  const closeAlert = () => {
+    setAlertState((prev) => ({ ...prev, visible: false }));
+  };
   
   const [componentModal, setComponentModal] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState<GradeComponent | null>(null);
@@ -109,6 +119,77 @@ export default function CourseGradeManager() {
     }
   };
 
+  const [alertConfig, setAlertConfig] = useState<AlertState>({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    confirmText = "Delete"
+  ) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type: "confirm",
+      onConfirm,
+      confirmText,
+    });
+  };
+
+  const showAlert = (title: string, message?: string) => {
+    setAlertConfig({ visible: true, title, message, type: "alert" });
+  };
+
+  const handleDeleteGradeComponent = (componentId: number | string, componentName: string) => {
+    showConfirm(
+      "Delete Component",
+      `Are you sure you want to delete "${componentName}" and all of its items?`,
+      async () => {
+        const { error: deleteError } = await apiRequest(`/grade-components/${componentId}/`, {
+          method: "DELETE",
+        });
+
+        if (deleteError) {
+          showAlert("Error", deleteError);
+        } else {
+          loadCourse();
+        }
+      },
+      "Delete"
+    );
+  };
+
+  const handleDeleteGradeEntry = (entryId: number | string, entryName: string) => {
+    setAlertState({
+      visible: true,
+      title: "Delete Grade",
+      message: `Are you sure you want to delete "${entryName}"?`,
+      type: "confirm",
+      confirmText: "Delete",
+      onConfirm: async () => {
+        const { error: deleteError } = await apiRequest(`/grade-entries/${entryId}/`, {
+          method: "DELETE",
+        });
+
+        if (deleteError) {
+          setAlertState({
+            visible: true,
+            title: "Error",
+            message: deleteError,
+            type: "alert",
+          });
+        } else {
+          loadCourse();
+        }
+      },
+    });
+  };
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
@@ -136,6 +217,11 @@ export default function CourseGradeManager() {
       <StatusBar style="light" />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <CustomAlertModal
+          state={alertConfig}
+          onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
+        />
+        
         <View className="bg-brand-navy pt-4 pb-8 items-center">
           <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
             <View className="flex-row items-center justify-between mb-4">
@@ -247,6 +333,13 @@ export default function CourseGradeManager() {
                           >
                             <Feather name="edit-2" size={12} color="#5B6472" />
                           </Pressable>
+                          <Pressable
+                            hitSlop={6}
+                            className="p-1 active:opacity-60"
+                            onPress={() => handleDeleteGradeComponent(category.id, category.name)}
+                          >
+                            <Feather name="trash-2" size={12} color="#8B1E3F" />
+                          </Pressable>
                         </View>
 
                         <View className="bg-brand-navy/5 px-2.5 py-1 rounded-full border border-brand-navy/10">
@@ -282,7 +375,11 @@ export default function CourseGradeManager() {
                               <Pressable hitSlop={6} className="p-1 active:opacity-60">
                                 <Feather name="edit-2" size={12} color="#5B6472" />
                               </Pressable>
-                              <Pressable hitSlop={6} className="p-1 active:opacity-60">
+                              <Pressable
+                                hitSlop={6}
+                                className="p-1 active:opacity-60"
+                                onPress={() => handleDeleteGradeEntry(item.id, item.name)}
+                              >
                                 <Feather name="trash-2" size={12} color="#8B1E3F" />
                               </Pressable>
                             </View>
@@ -305,7 +402,8 @@ export default function CourseGradeManager() {
             )}
           </View>
         </View>
-        
+
+        {/* Unified Component Modal (Create & Edit) */}
         <Modal
           visible={componentModal}
           transparent
@@ -371,7 +469,8 @@ export default function CourseGradeManager() {
             </View>
           </View>
         </Modal>
-        
+
+        {/* Add Assessment Grade Modal */}
         <Modal
           visible={addGradeModal}
           transparent
@@ -386,17 +485,25 @@ export default function CourseGradeManager() {
 
               <View className="gap-2.5 mb-4">
                 <View className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2">
-                  <Text className="text-brand-slate text-[10px] uppercase font-bold">Assessment Name</Text>
-                  <Text className="text-brand-navy text-xs font-medium">Quiz 3: Array Functions</Text>
+                  <Text className="text-brand-slate text-[10px] uppercase font-bold">
+                    Assessment Name
+                  </Text>
+                  <Text className="text-brand-navy text-xs font-medium">
+                    Quiz 3: Array Functions
+                  </Text>
                 </View>
 
                 <View className="flex-row gap-2">
                   <View className="flex-1 bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2">
-                    <Text className="text-brand-slate text-[10px] uppercase font-bold">Score</Text>
+                    <Text className="text-brand-slate text-[10px] uppercase font-bold">
+                      Score
+                    </Text>
                     <Text className="text-brand-navy text-xs font-medium">95</Text>
                   </View>
                   <View className="flex-1 bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2">
-                    <Text className="text-brand-slate text-[10px] uppercase font-bold">Max Score</Text>
+                    <Text className="text-brand-slate text-[10px] uppercase font-bold">
+                      Max Score
+                    </Text>
                     <Text className="text-brand-navy text-xs font-medium">100</Text>
                   </View>
                 </View>
@@ -414,7 +521,9 @@ export default function CourseGradeManager() {
                   className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90"
                   onPress={() => setAddGradeModal(false)}
                 >
-                  <Text className="text-brand-navy text-xs font-black uppercase">Save Item</Text>
+                  <Text className="text-brand-navy text-xs font-black uppercase">
+                    Save Item
+                  </Text>
                 </Pressable>
               </View>
             </View>
