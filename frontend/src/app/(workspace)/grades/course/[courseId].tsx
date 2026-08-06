@@ -185,7 +185,16 @@ export default function CourseGradeManager() {
 
         <View className="items-center py-6">
           <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
-            
+            <View className="bg-brand-card border border-brand-hair rounded-xl p-3 mb-5 flex-row items-center justify-between">
+              <Text className="text-brand-slate text-xs font-bold uppercase tracking-wider">
+                Overall Course Raw Grade
+              </Text>
+              <View className="bg-brand-navy/5 border border-brand-navy/10 px-3 py-1 rounded-full">
+                <Text className="text-brand-navy text-xs font-black">
+                  {rawOverallGrade !== null ? `${rawOverallGrade.toFixed(2)}%` : "N/A"}
+                </Text>
+              </View>
+            </View>
 
             <View className="items-center mb-4 z-0" style={{ zIndex: 0 }}>
               <Text className="text-brand-navy text-[11px] font-black uppercase tracking-widest mb-1">
@@ -267,7 +276,14 @@ export default function CourseGradeManager() {
                         ))}
                       </View>
 
-                      
+                      <View className="mt-3 pt-2.5 border-t border-brand-hair/60 flex-row justify-between items-center px-1">
+                        <Text className="text-brand-slate text-[10px] font-bold uppercase tracking-wider">
+                          Component Raw Grade
+                        </Text>
+                        <Text className="text-brand-navy text-xs font-black">
+                          {rawGrade !== null ? `${rawGrade.toFixed(2)}%` : "N/A"}
+                        </Text>
+                      </View>
                     </View>
                   );
                 })}
