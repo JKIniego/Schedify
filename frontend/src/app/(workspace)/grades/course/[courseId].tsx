@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   ScrollView,
   Text,
@@ -6,49 +6,14 @@ import {
   View,
   Pressable,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-
-const COURSE_DETAIL = {
-  id: "1",
-  code: "CMSC 192",
-  title: "Special Topics in Computer Science",
-  units: 3,
-  instructor: "Prof. Alan Turing",
-  currentGrade: 1.25,
-  targetGrade: 1.0,
-  categories: [
-    {
-      id: "cat-1",
-      name: "Quizzes & Short Tests",
-      weight: 20,
-      items: [
-        { id: "q1", name: "Quiz 1: Syntax & Variables", score: 95, maxScore: 100 },
-        { id: "q2", name: "Quiz 2: Control Structures", score: 88, maxScore: 100 },
-      ],
-    },
-    {
-      id: "cat-2",
-      name: "Machine Problems / Lab Work",
-      weight: 40,
-      items: [
-        { id: "mp1", name: "MP 1: CLI Application", score: 100, maxScore: 100 },
-        { id: "mp2", name: "MP 2: Mobile UI Layout", score: 92, maxScore: 100 },
-      ],
-    },
-    {
-      id: "cat-3",
-      name: "Examinations",
-      weight: 40,
-      items: [
-        { id: "e1", name: "Midterm Examination", score: 89, maxScore: 100 },
-      ],
-    },
-  ],
-};
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { apiRequest } from "../../../../utils/api";
+import { Course, courseGrade } from "../../../../utils/grades";
 
 export default function CourseGradeManager() {
   const { courseId } = useLocalSearchParams<{ courseId: string }>();
@@ -57,6 +22,48 @@ export default function CourseGradeManager() {
   const wide = width >= 700;
 
   const [addGradeModal, setAddGradeModal] = useState(false);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadCourse = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    const { data, error: reqError } = await apiRequest<Course>(`/courses/${courseId}/`);
+    if (reqError) {
+      setError(reqError);
+    } else if (data) {
+      setCourse(data);
+    }
+    setLoading(false);
+  }, [courseId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCourse();
+    }, [loadCourse])
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+        <ActivityIndicator />
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !course) {
+    return (
+      <SafeAreaView className="flex-1 bg-white items-center justify-center px-6">
+        <Text className="text-brand-slate text-xs text-center">
+          {error ?? "Course not found."}
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  const currentGrade = courseGrade(course);
+  const categories = course.grade_components ?? [];
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
@@ -88,19 +95,13 @@ export default function CourseGradeManager() {
             </View>
             
             <Text className="text-brand-gold text-xs font-black uppercase tracking-widest text-center">
-              {COURSE_DETAIL.code} • {COURSE_DETAIL.units} Units
+              {course.name}
             </Text>
-            <Text className="text-white text-xl font-black tracking-tight text-center mt-1">
-              {COURSE_DETAIL.title}
-            </Text>
-            <Text className="text-white/70 text-xs font-medium text-center mt-1">
-              Instructor: {COURSE_DETAIL.instructor}
-            </Text>
-            
+
             <View className="bg-white/10 rounded-2xl p-4 border border-white/15 backdrop-blur-md mt-5 flex-row items-center justify-around">
               <View className="items-center">
                 <Text className="text-brand-gold text-3xl font-black">
-                  {COURSE_DETAIL.currentGrade.toFixed(2)}
+                  {currentGrade !== null ? currentGrade.toFixed(2) : "N/A"}
                 </Text>
                 <Text className="text-white/80 text-[10px] font-bold uppercase tracking-wider mt-0.5">
                   Current Grade
@@ -111,10 +112,10 @@ export default function CourseGradeManager() {
 
               <View className="items-center">
                 <Text className="text-white text-3xl font-black">
-                  {COURSE_DETAIL.targetGrade.toFixed(2)}
+                  {course.units}
                 </Text>
                 <Text className="text-white/80 text-[10px] font-bold uppercase tracking-wider mt-0.5">
-                  Target Grade
+                  Units
                 </Text>
               </View>
             </View>
@@ -131,8 +132,15 @@ export default function CourseGradeManager() {
               <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
             </View>
             
+            {categories.length === 0 ? (
+              <View className="items-center py-8">
+                <Text className="text-brand-slate text-xs font-medium text-center">
+                  No grade categories yet. Tap "Add Grade" to get started.
+                </Text>
+              </View>
+            ) : (
             <View className="gap-4">
-              {COURSE_DETAIL.categories.map((category) => (
+              {categories.map((category) => (
                 <View
                   key={category.id}
                   className="rounded-2xl bg-brand-card border border-brand-hair p-4"
@@ -146,13 +154,13 @@ export default function CourseGradeManager() {
                     </View>
                     <View className="bg-brand-navy/5 px-2.5 py-1 rounded-full border border-brand-navy/10">
                       <Text className="text-brand-navy text-[10px] font-black">
-                        Weight: {category.weight}%
+                        Weight: {parseFloat(category.weight)}%
                       </Text>
                     </View>
                   </View>
                   
                   <View className="gap-2">
-                    {category.items.map((item) => (
+                    {(category.entries ?? []).map((item) => (
                       <View
                         key={item.id}
                         className="bg-white border border-brand-hair/80 rounded-xl p-3 flex-row items-center justify-between"
@@ -162,13 +170,13 @@ export default function CourseGradeManager() {
                             {item.name}
                           </Text>
                           <Text className="text-brand-slate text-[10px] font-medium">
-                            Score: {item.score} / {item.maxScore}
+                            Score: {item.score} / {item.max_score}
                           </Text>
                         </View>
 
                         <View className="flex-row items-center gap-3">
                           <Text className="text-brand-navy text-xs font-black">
-                            {((item.score / item.maxScore) * 100).toFixed(0)}%
+                            {item.max_score > 0 ? ((item.score / item.max_score) * 100).toFixed(0) : "0"}%
                           </Text>
                           
                           <Pressable hitSlop={6} className="p-1 active:opacity-60">
@@ -184,6 +192,7 @@ export default function CourseGradeManager() {
                 </View>
               ))}
             </View>
+            )}
           </View>
         </View>
         
