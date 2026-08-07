@@ -105,7 +105,7 @@ export default function Grades() {
                   <View className="flex-row items-center gap-1.5">
                     <Feather name="check-circle" size={13} color="#4ADE80" />
                     <Text className="text-white/80 text-xs font-semibold">
-                      {totalUnits} Units Completed
+                      {totalUnits} Units
                     </Text>
                   </View>
                 </View>
