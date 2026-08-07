@@ -130,11 +130,27 @@ class CourseDetailView(APIView):
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class ActiveTaskListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        course_id = request.query_params.get('course')
+
+        tasks = models.Task.objects.filter(
+            course__schedule__is_active=True,
+            course__schedule__user=request.user
+        )
+
+        if course_id:
+            tasks = tasks.filter(course_id=course_id)
+
+        serializer = serializers.TaskSerializer(tasks, many=True)
+        return Response(serializer.data)
+
 class TaskListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, schedule_id):
-        """Fetch tasks belonging to a schedule, with optional filtering by course_id."""
         course_id = request.query_params.get('course')
         
         tasks = models.Task.objects.filter(
@@ -149,7 +165,6 @@ class TaskListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request, schedule_id):
-        """Create a new task under a course belonging to the user."""
         course_id = request.data.get('course')
         try:
             course = models.Course.objects.get(

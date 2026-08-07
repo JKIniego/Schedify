@@ -11,6 +11,7 @@ urlpatterns = [
     path('courses/<int:pk>/', views.CourseDetailView.as_view()),
 
     # ======== Tasks ========
+    path('tasks/active/', views.ActiveTaskListView.as_view()),
     path('classes/<int:schedule_id>/tasks/', views.TaskListCreateView.as_view()),
     path('tasks/<int:pk>/', views.TaskDetailView.as_view()),
 
