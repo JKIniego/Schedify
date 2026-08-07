@@ -5,12 +5,13 @@ import {
   useWindowDimensions,
   View,
   ActivityIndicator,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Calendar, DateData } from "react-native-calendars";
 import { Feather } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { apiRequest } from "../../utils/api";
 
 export interface Task {
@@ -25,8 +26,15 @@ export interface Task {
   mark_as_completed_date?: string | null;
 }
 
+interface ClassScheduleSummary {
+  id: number;
+  title: string;
+  is_active: boolean;
+}
+
 export default function CalendarScreen() {
   const { width } = useWindowDimensions();
+  const router = useRouter();
   const wide = width >= 700;
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -56,6 +64,30 @@ export default function CalendarScreen() {
 
   const handleDayPress = (day: DateData) => {
     setSelectedDate(day.dateString);
+  };
+
+  const handleOpenTaskDetails = async (task: Task) => {
+    const { data, error: scheduleError } = await apiRequest<ClassScheduleSummary[]>("/classes/");
+
+    if (scheduleError || !data) {
+      setError("Unable to open task details.");
+      return;
+    }
+
+    const activeSchedule = data.find((schedule) => schedule.is_active);
+
+    if (!activeSchedule) {
+      setError("No active schedule found.");
+      return;
+    }
+
+    router.push({
+      pathname: "/tasks/[id]",
+      params: {
+        id: String(activeSchedule.id),
+        taskId: String(task.id),
+      },
+    });
   };
 
   const tasksByDate = useMemo(() => {
@@ -189,8 +221,9 @@ export default function CalendarScreen() {
             ) : (
               <View className="gap-3">
                 {selectedDayTasks.map((task) => (
-                  <View
+                  <Pressable
                     key={task.id}
+                    onPress={() => handleOpenTaskDetails(task)}
                     className="bg-white border border-brand-hair rounded-xl p-3.5 flex-row items-center justify-between shadow-xs"
                   >
                     <View className="flex-1 pr-3 items-start gap-1">
@@ -222,7 +255,7 @@ export default function CalendarScreen() {
                         }`}
                       />
                     </View>
-                  </View>
+                  </Pressable>
                 ))}
               </View>
             )}

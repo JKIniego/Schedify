@@ -51,7 +51,7 @@ const dateToYYYYMMDD = (date: Date): string => {
 };
 
 export default function Task() {
-  const { id } = useLocalSearchParams<{ id: string }>(); 
+  const { id, taskId } = useLocalSearchParams<{ id?: string; taskId?: string }>(); 
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 700;
@@ -215,6 +215,18 @@ export default function Task() {
       fetchTasks(id);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (!taskId || tasks.length === 0) return;
+
+    const targetTaskId = Number(taskId);
+    if (Number.isNaN(targetTaskId)) return;
+
+    const matchingTask = tasks.find((item) => item.id === targetTaskId);
+    if (matchingTask) {
+      setSelectedTask(matchingTask);
+    }
+  }, [taskId, tasks]);
 
   const fetchTasks = async (classId: string) => {
     setLoading(true);
