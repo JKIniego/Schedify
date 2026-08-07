@@ -20,6 +20,7 @@ import {
   courseFinalPercentage,
   componentPercentage,
   GradeComponent,
+  GradeEntry,
 } from "../../../../utils/grades";
 import { CustomAlertModal, AlertState } from "../../../../utils/alert";
 
@@ -28,17 +29,15 @@ export default function CourseGradeManager() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 700;
-
-  const [addGradeModal, setAddGradeModal] = useState(false);
   
-  const [alertState, setAlertState] = useState<AlertState>({
-    visible: false,
-    title: "",
-  });
-
-  const closeAlert = () => {
-    setAlertState((prev) => ({ ...prev, visible: false }));
-  };
+  const [addGradeModal, setAddGradeModal] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<GradeEntry | null>(null);
+  const [targetComponentId, setTargetComponentId] = useState<number | string | null>(null);
+  const [entryName, setEntryName] = useState("");
+  const [entryScore, setEntryScore] = useState("");
+  const [entryMaxScore, setEntryMaxScore] = useState("");
+  const [entryError, setEntryError] = useState<string | null>(null);
+  const [isSavingEntry, setIsSavingEntry] = useState(false);
   
   const [componentModal, setComponentModal] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState<GradeComponent | null>(null);
@@ -50,6 +49,12 @@ export default function CourseGradeManager() {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [alertConfig, setAlertConfig] = useState<AlertState>({
+    visible: false,
+    title: "",
+    message: "",
+  });
 
   const loadCourse = useCallback(async () => {
     setError(null);
@@ -69,6 +74,124 @@ export default function CourseGradeManager() {
     }, [loadCourse])
   );
 
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    confirmText = "Delete"
+  ) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      type: "confirm",
+      onConfirm,
+      confirmText,
+    });
+  };
+
+  const showAlert = (title: string, message?: string) => {
+    setAlertConfig({ visible: true, title, message, type: "alert" });
+  };
+  
+  const openEntryModal = (
+    componentId: number | string,
+    entry: GradeEntry | null = null
+  ) => {
+    setTargetComponentId(componentId);
+    setSelectedEntry(entry);
+    setEntryName(entry ? entry.name : "");
+    setEntryScore(entry ? entry.score.toString() : "");
+    setEntryMaxScore(entry ? entry.max_score.toString() : "");
+    setEntryError(null);
+    setAddGradeModal(true);
+  };
+
+  const closeEntryModal = () => {
+    setAddGradeModal(false);
+    setSelectedEntry(null);
+    setTargetComponentId(null);
+    setEntryName("");
+    setEntryScore("");
+    setEntryMaxScore("");
+    setEntryError(null);
+  };
+
+  const handleSaveGradeEntry = async () => {
+    if (!entryName.trim() || !entryScore.trim() || !entryMaxScore.trim()) {
+      setEntryError("Please fill out all fields.");
+      return;
+    }
+
+    const parsedScore = parseFloat(entryScore);
+    const parsedMaxScore = parseFloat(entryMaxScore);
+
+    if (isNaN(parsedScore) || isNaN(parsedMaxScore)) {
+      setEntryError("Score and Max Score must be valid numbers.");
+      return;
+    }
+
+    if (parsedMaxScore <= 0) {
+      setEntryError("Max score must be greater than zero.");
+      return;
+    }
+
+    setEntryError(null);
+    setIsSavingEntry(true);
+
+    const isEditing = !!selectedEntry;
+    const url = isEditing
+      ? `/grade-entries/${selectedEntry.id}/`
+      : `/grade-components/${targetComponentId}/grade-entries/`;
+    const method = isEditing ? "PATCH" : "POST";
+
+    const payload = isEditing
+      ? {
+          name: entryName.trim(),
+          score: parsedScore,
+          max_score: parsedMaxScore,
+        }
+      : {
+          component: targetComponentId,
+          name: entryName.trim(),
+          score: parsedScore,
+          max_score: parsedMaxScore,
+        };
+
+    const { error } = await apiRequest(url, {
+      method,
+      body: JSON.stringify(payload),
+    });
+
+    setIsSavingEntry(false);
+
+    if (error) {
+      setEntryError(error);
+    } else {
+      closeEntryModal();
+      loadCourse();
+    }
+  };
+
+  const handleDeleteGradeEntry = (entryId: number | string, entryName: string) => {
+    showConfirm(
+      "Delete Grade",
+      `Are you sure you want to delete "${entryName}"?`,
+      async () => {
+        const { error: deleteError } = await apiRequest(`/grade-entries/${entryId}/`, {
+          method: "DELETE",
+        });
+
+        if (deleteError) {
+          showAlert("Error", deleteError);
+        } else {
+          loadCourse();
+        }
+      },
+      "Delete"
+    );
+  };
+  
   const openComponentModal = (category: GradeComponent | null = null) => {
     setSelectedComponent(category);
     setComponentName(category ? category.name : "");
@@ -119,32 +242,6 @@ export default function CourseGradeManager() {
     }
   };
 
-  const [alertConfig, setAlertConfig] = useState<AlertState>({
-    visible: false,
-    title: "",
-    message: "",
-  });
-
-  const showConfirm = (
-    title: string,
-    message: string,
-    onConfirm: () => void,
-    confirmText = "Delete"
-  ) => {
-    setAlertConfig({
-      visible: true,
-      title,
-      message,
-      type: "confirm",
-      onConfirm,
-      confirmText,
-    });
-  };
-
-  const showAlert = (title: string, message?: string) => {
-    setAlertConfig({ visible: true, title, message, type: "alert" });
-  };
-
   const handleDeleteGradeComponent = (componentId: number | string, componentName: string) => {
     showConfirm(
       "Delete Component",
@@ -162,32 +259,6 @@ export default function CourseGradeManager() {
       },
       "Delete"
     );
-  };
-
-  const handleDeleteGradeEntry = (entryId: number | string, entryName: string) => {
-    setAlertState({
-      visible: true,
-      title: "Delete Grade",
-      message: `Are you sure you want to delete "${entryName}"?`,
-      type: "confirm",
-      confirmText: "Delete",
-      onConfirm: async () => {
-        const { error: deleteError } = await apiRequest(`/grade-entries/${entryId}/`, {
-          method: "DELETE",
-        });
-
-        if (deleteError) {
-          setAlertState({
-            visible: true,
-            title: "Error",
-            message: deleteError,
-            type: "alert",
-          });
-        } else {
-          loadCourse();
-        }
-      },
-    });
   };
 
   if (loading) {
@@ -221,7 +292,7 @@ export default function CourseGradeManager() {
           state={alertConfig}
           onClose={() => setAlertConfig((prev) => ({ ...prev, visible: false }))}
         />
-        
+
         <View className="bg-brand-navy pt-4 pb-8 items-center">
           <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
             <View className="flex-row items-center justify-between mb-4">
@@ -342,10 +413,22 @@ export default function CourseGradeManager() {
                           </Pressable>
                         </View>
 
-                        <View className="bg-brand-navy/5 px-2.5 py-1 rounded-full border border-brand-navy/10">
-                          <Text className="text-brand-navy text-[10px] font-black">
-                            Weight: {parseFloat(category.weight)}%
-                          </Text>
+                        <View className="flex-row items-center gap-2">
+                          <Pressable
+                            className="bg-brand-navy/10 px-2 py-1 rounded-full flex-row items-center gap-1 active:opacity-70"
+                            onPress={() => openEntryModal(category.id, null)}
+                          >
+                            <Feather name="plus" size={10} color="#14213D" />
+                            <Text className="text-brand-navy text-[10px] font-bold uppercase">
+                              Add Item
+                            </Text>
+                          </Pressable>
+
+                          <View className="bg-brand-navy/5 px-2.5 py-1 rounded-full border border-brand-navy/10">
+                            <Text className="text-brand-navy text-[10px] font-black">
+                              Weight: {parseFloat(category.weight)}%
+                            </Text>
+                          </View>
                         </View>
                       </View>
 
@@ -372,9 +455,14 @@ export default function CourseGradeManager() {
                                 %
                               </Text>
 
-                              <Pressable hitSlop={6} className="p-1 active:opacity-60">
+                              <Pressable
+                                hitSlop={6}
+                                className="p-1 active:opacity-60"
+                                onPress={() => openEntryModal(category.id, item)}
+                              >
                                 <Feather name="edit-2" size={12} color="#5B6472" />
                               </Pressable>
+
                               <Pressable
                                 hitSlop={6}
                                 className="p-1 active:opacity-60"
@@ -402,8 +490,7 @@ export default function CourseGradeManager() {
             )}
           </View>
         </View>
-
-        {/* Unified Component Modal (Create & Edit) */}
+        
         <Modal
           visible={componentModal}
           transparent
@@ -469,61 +556,83 @@ export default function CourseGradeManager() {
             </View>
           </View>
         </Modal>
-
-        {/* Add Assessment Grade Modal */}
+        
         <Modal
           visible={addGradeModal}
           transparent
           animationType="fade"
-          onRequestClose={() => setAddGradeModal(false)}
+          onRequestClose={closeEntryModal}
         >
           <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
-            <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
+            <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair overflow-hidden">
               <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-3">
-                Add Assessment Grade
+                {selectedEntry ? "Edit Assessment Grade" : "Add Assessment Grade"}
               </Text>
 
-              <View className="gap-2.5 mb-4">
-                <View className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2">
-                  <Text className="text-brand-slate text-[10px] uppercase font-bold">
-                    Assessment Name
-                  </Text>
-                  <Text className="text-brand-navy text-xs font-medium">
-                    Quiz 3: Array Functions
-                  </Text>
-                </View>
+              <View className="gap-2.5 mb-2 w-full">
+                <TextInput
+                  className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium w-full"
+                  placeholder="Assessment Name (e.g., Quiz 1)"
+                  placeholderTextColor="#A8ADB8"
+                  value={entryName}
+                  onChangeText={(text) => {
+                    setEntryName(text);
+                    if (entryError) setEntryError(null);
+                  }}
+                  autoFocus
+                />
 
-                <View className="flex-row gap-2">
-                  <View className="flex-1 bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2">
-                    <Text className="text-brand-slate text-[10px] uppercase font-bold">
-                      Score
-                    </Text>
-                    <Text className="text-brand-navy text-xs font-medium">95</Text>
-                  </View>
-                  <View className="flex-1 bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2">
-                    <Text className="text-brand-slate text-[10px] uppercase font-bold">
-                      Max Score
-                    </Text>
-                    <Text className="text-brand-navy text-xs font-medium">100</Text>
-                  </View>
+                <View className="flex-row gap-2 w-full">
+                  <TextInput
+                    className="flex-1 min-w-0 bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium"
+                    placeholder="Score"
+                    placeholderTextColor="#A8ADB8"
+                    keyboardType="numeric"
+                    value={entryScore}
+                    onChangeText={(text) => {
+                      setEntryScore(text);
+                      if (entryError) setEntryError(null);
+                    }}
+                  />
+
+                  <TextInput
+                    className="flex-1 min-w-0 bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium"
+                    placeholder="Max Score"
+                    placeholderTextColor="#A8ADB8"
+                    keyboardType="numeric"
+                    value={entryMaxScore}
+                    onChangeText={(text) => {
+                      setEntryMaxScore(text);
+                      if (entryError) setEntryError(null);
+                    }}
+                  />
                 </View>
               </View>
 
-              <View className="flex-row justify-end gap-2">
+              {entryError && (
+                <Text className="text-brand-crimson text-xs mb-2 mt-1">{entryError}</Text>
+              )}
+
+              <View className="flex-row justify-end gap-2 mt-3">
                 <Pressable
                   className="px-4 py-2 rounded-full border border-brand-hair bg-white"
-                  onPress={() => setAddGradeModal(false)}
+                  onPress={closeEntryModal}
                 >
                   <Text className="text-brand-slate text-xs font-bold uppercase">Cancel</Text>
                 </Pressable>
 
                 <Pressable
-                  className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90"
-                  onPress={() => setAddGradeModal(false)}
+                  className="px-4 py-2 rounded-full bg-brand-gold active:opacity-90 min-w-[70px] items-center"
+                  onPress={handleSaveGradeEntry}
+                  disabled={isSavingEntry}
                 >
-                  <Text className="text-brand-navy text-xs font-black uppercase">
-                    Save Item
-                  </Text>
+                  {isSavingEntry ? (
+                    <ActivityIndicator size="small" color="#14213D" />
+                  ) : (
+                    <Text className="text-brand-navy text-xs font-black uppercase">
+                      {selectedEntry ? "Save" : "Add"}
+                    </Text>
+                  )}
                 </Pressable>
               </View>
             </View>
