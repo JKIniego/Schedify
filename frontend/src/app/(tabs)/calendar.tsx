@@ -98,7 +98,6 @@ export default function CalendarScreen() {
       <StatusBar style="light" />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View className="bg-brand-navy pt-4 pb-8 items-center">
           <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
             <View className="flex-row items-center justify-between mb-4">
@@ -194,7 +193,7 @@ export default function CalendarScreen() {
                     key={task.id}
                     className="bg-white border border-brand-hair rounded-xl p-3.5 flex-row items-center justify-between shadow-xs"
                   >
-                    <View className="flex-1 pr-3">
+                    <View className="flex-1 pr-3 items-start gap-1">
                       <Text
                         className={`text-brand-navy font-bold text-xs ${
                           task.is_completed ? "line-through text-brand-slate" : ""
@@ -203,9 +202,11 @@ export default function CalendarScreen() {
                         {task.title}
                       </Text>
                       {task.course_name && (
-                        <Text className="text-brand-slate text-[10px] font-medium mt-0.5">
-                          {task.course_name}
-                        </Text>
+                        <View className="bg-brand-navy px-2 py-0.5 rounded-full">
+                          <Text className="text-white text-[10px] font-medium tracking-widest mt-0.5">
+                            {task.course_name}
+                          </Text>
+                        </View>
                       )}
                     </View>
 
