@@ -45,19 +45,11 @@ export default function Grades() {
 
   const courseGrades = courses.map((course) => ({
     course,
-    grade: courseGrade(course), // number | null - null means no gradeable data yet
+    grade: courseGrade(course),
   }));
 
   const totalUnits = courseGrades.reduce((sum, c) => sum + c.course.units, 0);
-  const overallGwa = computeGwa(courses); // number | null
-
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
-  }
+  const overallGwa = computeGwa(courses);
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
@@ -123,69 +115,81 @@ export default function Grades() {
               <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
             </View>
 
-            <View className="gap-3">
-              {courseGrades.map(({ course, grade }) => {
-                const isSelected = selectedCourseId === course.id;
+            {loading ? (
+              <View className="py-12 items-center justify-center">
+                <ActivityIndicator size="small" color="#14213D" />
+              </View>
+            ) : courseGrades.length === 0 ? (
+              <View className="items-center py-8 gap-3">
+                <Text className="text-brand-slate text-xs font-medium text-center">
+                  No courses enrolled yet for this term.
+                </Text>
+              </View>
+            ) : (
+              <View className="gap-3">
+                {courseGrades.map(({ course, grade }) => {
+                  const isSelected = selectedCourseId === course.id;
 
-                return (
-                  <Pressable
-                    key={course.id}
-                    onPress={() => setSelectedCourseId(isSelected ? null : course.id)}
-                    className={`relative overflow-hidden rounded-2xl bg-brand-card border p-4 transition-all active:scale-[0.99] ${
-                      isSelected ? "border-brand-gold/60 shadow-xs" : "border-brand-hair"
-                    }`}
-                  >
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-1 pr-3">
-                        <View className="flex-row items-center gap-2 mb-1">
-                          <Text className="text-brand-navy font-black text-sm tracking-wide">
-                            {course.name}
+                  return (
+                    <Pressable
+                      key={course.id}
+                      onPress={() => setSelectedCourseId(isSelected ? null : course.id)}
+                      className={`relative overflow-hidden rounded-2xl bg-brand-card border p-4 transition-all active:scale-[0.99] ${
+                        isSelected ? "border-brand-gold/60 shadow-xs" : "border-brand-hair"
+                      }`}
+                    >
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-1 pr-3">
+                          <View className="flex-row items-center gap-2 mb-1">
+                            <Text className="text-brand-navy font-black text-sm tracking-wide">
+                              {course.name}
+                            </Text>
+                            <Text className="text-brand-slate text-xs font-medium">
+                              • {course.units} Units
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View className="bg-brand-navy/5 border border-brand-navy/10 px-3 py-1.5 rounded-xl items-center">
+                          <Text className="text-brand-navy font-black text-base">
+                            {grade !== null ? grade.toFixed(2) : "N/A"}
                           </Text>
-                          <Text className="text-brand-slate text-xs font-medium">
-                            • {course.units} Units
+                          <Text className="text-brand-slate text-[9px] font-bold uppercase tracking-wider">
+                            Grade
                           </Text>
                         </View>
                       </View>
 
-                      <View className="bg-brand-navy/5 border border-brand-navy/10 px-3 py-1.5 rounded-xl items-center">
-                        <Text className="text-brand-navy font-black text-base">
-                          {grade !== null ? grade.toFixed(2) : "N/A"}
-                        </Text>
-                        <Text className="text-brand-slate text-[9px] font-bold uppercase tracking-wider">
-                          Grade
-                        </Text>
-                      </View>
-                    </View>
+                      {isSelected && (
+                        <View className="mt-3 pt-3 border-t border-brand-hair/80 flex-row items-center justify-between">
+                          <View className="flex-row items-center gap-1.5">
+                            <Feather
+                              name={grade !== null ? "award" : "clock"}
+                              size={12}
+                              color="#14213D"
+                            />
+                            <Text className="text-brand-navy text-xs font-bold">
+                              {grade === null ? "No grades yet" : grade <= 3.0 ? "Passed" : "At risk"}
+                            </Text>
+                          </View>
 
-                    {isSelected && (
-                      <View className="mt-3 pt-3 border-t border-brand-hair/80 flex-row items-center justify-between">
-                        <View className="flex-row items-center gap-1.5">
-                          <Feather
-                            name={grade !== null ? "award" : "clock"}
-                            size={12}
-                            color="#14213D"
-                          />
-                          <Text className="text-brand-navy text-xs font-bold">
-                            {grade === null ? "No grades yet" : grade <= 3.0 ? "Passed" : "At risk"}
-                          </Text>
+                          <Pressable
+                            className="flex-row items-center gap-1.5 bg-brand-navy px-3 py-1.5 rounded-full active:opacity-90"
+                            onPress={() => router.push(`./course/${course.id}`)}
+                            hitSlop={6}
+                          >
+                            <Text className="text-white text-[10px] font-bold uppercase tracking-wider">
+                              Manage
+                            </Text>
+                            <Feather name="chevron-right" size={12} color="#FFFFFF" />
+                          </Pressable>
                         </View>
-
-                        <Pressable
-                          className="flex-row items-center gap-1.5 bg-brand-navy px-3 py-1.5 rounded-full active:opacity-90"
-                          onPress={() => router.push(`./course/${course.id}`)}
-                          hitSlop={6}
-                        >
-                          <Text className="text-white text-[10px] font-bold uppercase tracking-wider">
-                            Manage
-                          </Text>
-                          <Feather name="chevron-right" size={12} color="#FFFFFF" />
-                        </Pressable>
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>

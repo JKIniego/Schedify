@@ -312,15 +312,7 @@ export default function CourseGradeManager() {
     );
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
-  }
-
-  if (error || !course) {
+  if (!loading && (error || !course)) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center px-6">
         <Text className="text-brand-slate text-xs text-center">
@@ -330,9 +322,9 @@ export default function CourseGradeManager() {
     );
   }
 
-  const currentGrade = courseGrade(course);
-  const rawOverallGrade = courseFinalPercentage(course);
-  const categories = course.grade_components ?? [];
+  const currentGrade = course ? courseGrade(course) : null;
+  const rawOverallGrade = course ? courseFinalPercentage(course) : null;
+  const categories = course?.grade_components ?? [];
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
@@ -369,7 +361,7 @@ export default function CourseGradeManager() {
             </View>
 
             <Text className="text-brand-gold text-xs font-black uppercase tracking-widest text-center">
-              {course.name}
+              {course?.name ?? " "}
             </Text>
 
             <View className="bg-white/10 rounded-2xl p-4 border border-white/15 backdrop-blur-md mt-5 flex-row items-center justify-around">
@@ -386,7 +378,7 @@ export default function CourseGradeManager() {
 
               <View className="items-center">
                 <Text className="text-white text-3xl font-black">
-                  {course.units}
+                  {course ? course.units : "—"}
                 </Text>
                 <Text className="text-white/80 text-[10px] font-bold uppercase tracking-wider mt-0.5">
                   Units
@@ -398,40 +390,46 @@ export default function CourseGradeManager() {
 
         <View className="items-center py-6">
           <View style={{ width: "100%", maxWidth: width, paddingHorizontal: wide ? 32 : 24 }}>
-            <View className="bg-brand-card border border-brand-hair rounded-xl p-3 mb-5 flex-row items-center justify-between">
-              <Text className="text-brand-slate text-xs font-bold uppercase tracking-wider">
-                Overall Course Raw Grade
-              </Text>
-              <View className="bg-brand-navy/5 border border-brand-navy/10 px-3 py-1 rounded-full">
-                <Text className="text-brand-navy text-xs font-black">
-                  {rawOverallGrade !== null ? `${rawOverallGrade.toFixed(2)}%` : "N/A"}
-                </Text>
-              </View>
-            </View>
-
-            <View className="items-center mb-4 z-0" style={{ zIndex: 0 }}>
-              <Text className="text-brand-navy text-[11px] font-black uppercase tracking-widest mb-1">
-                Grade Breakdown & Assessment Items
-              </Text>
-              <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
-            </View>
-
-            {categories.length === 0 ? (
-              <View className="items-center py-8 gap-3">
-                <Text className="text-brand-slate text-xs font-medium text-center">
-                  No grade components yet. Add a component to get started.
-                </Text>
-                <Pressable
-                  className="bg-brand-navy px-4 py-2 rounded-full flex-row items-center gap-1.5 active:opacity-90"
-                  onPress={() => openComponentModal(null)}
-                >
-                  <Feather name="folder-plus" size={14} color="#FFFFFF" />
-                  <Text className="text-white text-xs font-bold uppercase tracking-wider">
-                    Add Component
-                  </Text>
-                </Pressable>
+            {loading ? (
+              <View className="py-20 items-center justify-center">
+                <ActivityIndicator size="small" color="#14213D" />
               </View>
             ) : (
+              <>
+                <View className="bg-brand-card border border-brand-hair rounded-xl p-3 mb-5 flex-row items-center justify-between">
+                  <Text className="text-brand-slate text-xs font-bold uppercase tracking-wider">
+                    Overall Course Raw Grade
+                  </Text>
+                  <View className="bg-brand-navy/5 border border-brand-navy/10 px-3 py-1 rounded-full">
+                    <Text className="text-brand-navy text-xs font-black">
+                      {rawOverallGrade !== null ? `${rawOverallGrade.toFixed(2)}%` : "N/A"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="items-center mb-4 z-0" style={{ zIndex: 0 }}>
+                  <Text className="text-brand-navy text-[11px] font-black uppercase tracking-widest mb-1">
+                    Grade Breakdown & Assessment Items
+                  </Text>
+                  <View className="w-8 h-0.5 bg-brand-gold rounded-full" />
+                </View>
+
+                {categories.length === 0 ? (
+                  <View className="items-center py-8 gap-3">
+                    <Text className="text-brand-slate text-xs font-medium text-center">
+                      No grade components yet. Add a component to get started.
+                    </Text>
+                    <Pressable
+                      className="bg-brand-navy px-4 py-2 rounded-full flex-row items-center gap-1.5 active:opacity-90"
+                      onPress={() => openComponentModal(null)}
+                    >
+                      <Feather name="folder-plus" size={14} color="#FFFFFF" />
+                      <Text className="text-white text-xs font-bold uppercase tracking-wider">
+                        Add Component
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : (
               <View className="gap-4">
                 {categories.map((category) => {
                   const hasEntries = (category.entries ?? []).length > 0;
@@ -492,52 +490,60 @@ export default function CourseGradeManager() {
                         </View>
                       </View>
 
-                      <View className="gap-2">
-                        {(category.entries ?? []).map((item) => (
-                          <View
-                            key={item.id}
-                            className="bg-white border border-brand-hair/80 rounded-xl p-3 flex-row items-center justify-between"
-                          >
-                            <View className="flex-1 pr-2">
-                              <Text className="text-brand-navy text-xs font-bold">
-                                {item.name}
-                              </Text>
-                              <Text className="text-brand-slate text-[10px] font-medium">
-                                Score: {item.score} / {item.max_score}
-                              </Text>
-                            </View>
-
-                            <View className="flex-row items-center gap-3">
-                              <View className="bg-brand-navy/5 px-2 py-0.5 rounded-full min-w-[38px] items-center">
-                                <Text className="text-brand-navy text-[11px] font-black">
-                                  {item.max_score > 0
-                                    ? ((item.score / item.max_score) * 100).toFixed(0)
-                                    : "0"}
-                                  %
+                      {hasEntries ? (
+                        <View className="gap-2">
+                          {(category.entries ?? []).map((item) => (
+                            <View
+                              key={item.id}
+                              className="bg-white border border-brand-hair/80 rounded-xl p-3 flex-row items-center justify-between"
+                            >
+                              <View className="flex-1 pr-2">
+                                <Text className="text-brand-navy text-xs font-bold">
+                                  {item.name}
+                                </Text>
+                                <Text className="text-brand-slate text-[10px] font-medium">
+                                  Score: {item.score} / {item.max_score}
                                 </Text>
                               </View>
 
-                              <View className="flex-row items-center gap-2">
-                                <Pressable
-                                  hitSlop={8}
-                                  className="active:opacity-60"
-                                  onPress={() => openEntryModal(category.id, item)}
-                                >
-                                  <Feather name="edit-2" size={12} color="#5B6472" />
-                                </Pressable>
+                              <View className="flex-row items-center gap-3">
+                                <View className="bg-brand-navy/5 px-2 py-0.5 rounded-full min-w-[38px] items-center">
+                                  <Text className="text-brand-navy text-[11px] font-black">
+                                    {item.max_score > 0
+                                      ? ((item.score / item.max_score) * 100).toFixed(0)
+                                      : "0"}
+                                    %
+                                  </Text>
+                                </View>
 
-                                <Pressable
-                                  hitSlop={8}
-                                  className="active:opacity-60"
-                                  onPress={() => handleDeleteGradeEntry(item.id, item.name)}
-                                >
-                                  <Feather name="trash-2" size={12} color="#8B1E3F" />
-                                </Pressable>
+                                <View className="flex-row items-center gap-2">
+                                  <Pressable
+                                    hitSlop={8}
+                                    className="active:opacity-60"
+                                    onPress={() => openEntryModal(category.id, item)}
+                                  >
+                                    <Feather name="edit-2" size={12} color="#5B6472" />
+                                  </Pressable>
+
+                                  <Pressable
+                                    hitSlop={8}
+                                    className="active:opacity-60"
+                                    onPress={() => handleDeleteGradeEntry(item.id, item.name)}
+                                  >
+                                    <Feather name="trash-2" size={12} color="#8B1E3F" />
+                                  </Pressable>
+                                </View>
                               </View>
                             </View>
-                          </View>
-                        ))}
-                      </View>
+                          ))}
+                        </View>
+                      ) : (
+                        <View className="items-center py-4">
+                          <Text className="text-brand-slate text-[11px] font-medium text-center">
+                            No assessment items yet. Tap "Add Item" to record a grade.
+                          </Text>
+                        </View>
+                      )}
 
                       <View className="mt-3 pt-2.5 border-t border-brand-hair/60 flex-row justify-between items-center px-1">
                         <Text className="text-brand-slate text-[10px] font-bold uppercase tracking-wider">
@@ -550,7 +556,9 @@ export default function CourseGradeManager() {
                     </View>
                   );
                 })}
-              </View>
+                  </View>
+                )}
+              </>
             )}
           </View>
         </View>
