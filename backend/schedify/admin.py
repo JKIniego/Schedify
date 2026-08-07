@@ -19,3 +19,15 @@ class TaskAdmin(admin.ModelAdmin):
     list_display = ('title', 'course', 'priority', 'is_completed', 'created_at')
     list_filter = ('priority', 'is_completed', 'course')
     search_fields = ('title', 'description', 'course__name')
+
+@admin.register(models.GradeComponent)
+class GradeComponentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'course', 'weight')
+    list_filter = ('course',)
+    search_fields = ('name', 'course__name')
+
+@admin.register(models.GradeEntry)
+class GradeEntryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'component', 'score', 'max_score')
+    list_filter = ('component',)
+    search_fields = ('name', 'component__name')

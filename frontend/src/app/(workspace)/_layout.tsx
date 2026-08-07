@@ -36,7 +36,7 @@ export default function WorkspaceLayout() {
       <Tabs.Screen
         name="schedule/[id]"
         options={{
-          href: scheduleId ? `/schedule/${scheduleId}` : null,
+          href: scheduleId ? { pathname: "/schedule/[id]", params: { id: scheduleId } } : null,
           tabBarLabel: "Schedule",
           tabBarActiveTintColor: "#14213D",
           tabBarInactiveTintColor: "#5B6472",
@@ -48,13 +48,32 @@ export default function WorkspaceLayout() {
       <Tabs.Screen
         name="tasks/[id]"
         options={{
-          href: scheduleId ? `/tasks/${scheduleId}` : null,
+          href: scheduleId ? { pathname: "/tasks/[id]", params: { id: scheduleId } } : null,
           tabBarLabel: "Tasks",
           tabBarActiveTintColor: "#14213D",
           tabBarInactiveTintColor: "#5B6472",
           tabBarIcon: ({ color }) => (
             <Feather name="list" size={20} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="grades/[id]"
+        options={{
+          href: scheduleId ? { pathname: "/grades/[id]", params: { id: scheduleId } } : null,
+          tabBarLabel: "Grades",
+          tabBarActiveTintColor: "#14213D",
+          tabBarInactiveTintColor: "#5B6472",
+          tabBarIcon: ({ color }) => (
+            <Feather name="star" size={20} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="grades/course/[courseId]"
+        options={{
+          href: null,
+          tabBarStyle: { display: "none" },
         }}
       />
       <Tabs.Screen

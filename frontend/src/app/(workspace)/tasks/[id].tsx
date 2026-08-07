@@ -64,7 +64,6 @@ export default function Task() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   
-  // Unified Task Form Modal State
   const [isTaskModalOpen, setIsTaskModalOpen] = useState<boolean>(false);
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [submittingTask, setSubmittingTask] = useState<boolean>(false);

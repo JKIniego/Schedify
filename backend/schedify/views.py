@@ -203,3 +203,122 @@ class TaskDetailView(APIView):
 
         task.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class GradeComponentListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, course_id):
+        components = models.GradeComponent.objects.filter(
+            course_id=course_id,
+            course__schedule__user=request.user
+        )
+        serializer = serializers.GradeComponentSerializer(components, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, course_id):
+        try:
+            course = models.Course.objects.get(id=course_id, schedule__user=request.user)
+        except models.Course.DoesNotExist:
+            return Response({"detail": "Course not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = serializers.GradeComponentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(course=course)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GradeComponentDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, pk, user):
+        try:
+            return models.GradeComponent.objects.get(pk=pk, course__schedule__user=user)
+        except models.GradeComponent.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        component = self.get_object(pk, request.user)
+        if not component:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serializers.GradeComponentSerializer(component).data)
+
+    def patch(self, request, pk):
+        component = self.get_object(pk, request.user)
+        if not component:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = serializers.GradeComponentSerializer(component, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        component = self.get_object(pk, request.user)
+        if not component:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        component.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class GradeEntryListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, component_id):
+        entries = models.GradeEntry.objects.filter(
+            component_id=component_id,
+            component__course__schedule__user=request.user
+        )
+        serializer = serializers.GradeEntrySerializer(entries, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, component_id):
+        try:
+            component = models.GradeComponent.objects.get(
+                id=component_id,
+                course__schedule__user=request.user
+            )
+        except models.GradeComponent.DoesNotExist:
+            return Response({"detail": "Grade component not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = serializers.GradeEntrySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(component=component)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GradeEntryDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, pk, user):
+        try:
+            return models.GradeEntry.objects.get(pk=pk, component__course__schedule__user=user)
+        except models.GradeEntry.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        entry = self.get_object(pk, request.user)
+        if not entry:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serializers.GradeEntrySerializer(entry).data)
+
+    def patch(self, request, pk):
+        entry = self.get_object(pk, request.user)
+        if not entry:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = serializers.GradeEntrySerializer(entry, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        entry = self.get_object(pk, request.user)
+        if not entry:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        entry.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

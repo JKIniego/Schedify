@@ -13,4 +13,10 @@ urlpatterns = [
     # ======== Tasks ========
     path('classes/<int:schedule_id>/tasks/', views.TaskListCreateView.as_view()),
     path('tasks/<int:pk>/', views.TaskDetailView.as_view()),
+
+    # ======== Grades ========
+    path('courses/<int:course_id>/grade-components/', views.GradeComponentListCreateView.as_view()),
+    path('grade-components/<int:pk>/', views.GradeComponentDetailView.as_view()),
+    path('grade-components/<int:component_id>/grade-entries/', views.GradeEntryListCreateView.as_view()),
+    path('grade-entries/<int:pk>/', views.GradeEntryDetailView.as_view()),
 ]
