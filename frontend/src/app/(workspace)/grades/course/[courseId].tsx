@@ -364,27 +364,35 @@ export default function CourseGradeManager() {
               {course?.name ?? " "}
             </Text>
 
-            <View className="bg-white/10 rounded-2xl p-4 border border-white/15 backdrop-blur-md mt-5 flex-row items-center justify-around">
-              <View className="items-center">
-                <Text className="text-brand-gold text-3xl font-black">
-                  {currentGrade !== null ? currentGrade.toFixed(2) : "N/A"}
-                </Text>
-                <Text className="text-white/80 text-[10px] font-bold uppercase tracking-wider mt-0.5">
-                  Current Grade
-                </Text>
+            {loading ? (
+              <View className="bg-white/10 rounded-2xl p-4 border border-white/15 backdrop-blur-md mt-5 flex-row items-center justify-around">
+                <View className="py-12 items-center justify-center">
+                  <ActivityIndicator size="small" color="white" />
+                </View>
               </View>
+            ) : (
+              <View className="bg-white/10 rounded-2xl p-4 border border-white/15 backdrop-blur-md mt-5 flex-row items-center justify-around">
+                <View className="items-center">
+                  <Text className="text-brand-gold text-3xl font-black">
+                    {currentGrade !== null ? currentGrade.toFixed(2) : "N/A"}
+                  </Text>
+                  <Text className="text-white/80 text-[10px] font-bold uppercase tracking-wider mt-0.5">
+                    Current Grade
+                  </Text>
+                </View>
 
-              <View className="w-px h-8 bg-white/20" />
+                <View className="w-px h-8 bg-white/20" />
 
-              <View className="items-center">
-                <Text className="text-white text-3xl font-black">
-                  {course ? course.units : "—"}
-                </Text>
-                <Text className="text-white/80 text-[10px] font-bold uppercase tracking-wider mt-0.5">
-                  Units
-                </Text>
+                <View className="items-center">
+                  <Text className="text-white text-3xl font-black">
+                    {course ? course.units : "—"}
+                  </Text>
+                  <Text className="text-white/80 text-[10px] font-bold uppercase tracking-wider mt-0.5">
+                    Units
+                  </Text>
+                </View>
               </View>
-            </View>
+            )}
           </View>
         </View>
 

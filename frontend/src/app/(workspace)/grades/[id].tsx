@@ -75,34 +75,42 @@ export default function Grades() {
               <Text className="text-red-300 text-xs text-center mb-3">{error}</Text>
             )}
 
-            <View className="bg-white/10 rounded-2xl p-5 border border-white/15 backdrop-blur-md">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-white/80 text-xs font-bold uppercase tracking-widest">
-                  General Weighted Average
-                </Text>
-              </View>
-
-              <View className="flex-row items-baseline gap-2">
-                <Text className="text-brand-gold text-4xl font-black tracking-tight">
-                  {overallGwa !== null ? overallGwa.toFixed(3) : "N/A"}
-                </Text>
-              </View>
-
-              <View className="flex-row items-center justify-between mt-4 pt-3 border-t border-white/10">
-                <View className="flex-row items-center gap-1.5">
-                  <Feather name="book-open" size={13} color="#C9A227" />
-                  <Text className="text-white/80 text-xs font-semibold">
-                    {courses.length} Courses Recorded
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-1.5">
-                  <Feather name="check-circle" size={13} color="#4ADE80" />
-                  <Text className="text-white/80 text-xs font-semibold">
-                    {totalUnits} Units Completed
-                  </Text>
+            {loading ? (
+              <View className="bg-white/10 rounded-2xl p-5 border border-white/15 backdrop-blur-md">
+                <View className="py-12 items-center justify-center">
+                  <ActivityIndicator size="small" color="white" />
                 </View>
               </View>
-            </View>
+            ) : (
+              <View className="bg-white/10 rounded-2xl p-5 border border-white/15 backdrop-blur-md">
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-white/80 text-xs font-bold uppercase tracking-widest">
+                    General Weighted Average
+                  </Text>
+                </View>
+
+                <View className="flex-row items-baseline gap-2">
+                  <Text className="text-brand-gold text-4xl font-black tracking-tight">
+                    {overallGwa !== null ? overallGwa.toFixed(3) : "N/A"}
+                  </Text>
+                </View>
+
+                <View className="flex-row items-center justify-between mt-4 pt-3 border-t border-white/10">
+                  <View className="flex-row items-center gap-1.5">
+                    <Feather name="book-open" size={13} color="#C9A227" />
+                    <Text className="text-white/80 text-xs font-semibold">
+                      {courses.length} Courses Recorded
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-1.5">
+                    <Feather name="check-circle" size={13} color="#4ADE80" />
+                    <Text className="text-white/80 text-xs font-semibold">
+                      {totalUnits} Units Completed
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         </View>
 
