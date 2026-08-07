@@ -36,16 +36,23 @@ export default function CourseGradeManager() {
   const [entryName, setEntryName] = useState("");
   const [entryScore, setEntryScore] = useState("");
   const [entryMaxScore, setEntryMaxScore] = useState("");
-  const [entryError, setEntryError] = useState<string | null>(null);
+  const [entryErrors, setEntryErrors] = useState<{
+    name?: string;
+    score?: string;
+    maxScore?: string;
+  }>({});
   const [isSavingEntry, setIsSavingEntry] = useState(false);
   
   const [componentModal, setComponentModal] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState<GradeComponent | null>(null);
   const [componentName, setComponentName] = useState("");
   const [componentWeight, setComponentWeight] = useState("");
-  const [componentError, setComponentError] = useState<string | null>(null);
+  const [componentErrors, setComponentErrors] = useState<{
+    name?: string;
+    weight?: string;
+  }>({});
   const [isSavingComponent, setIsSavingComponent] = useState(false);
-
+  
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +101,15 @@ export default function CourseGradeManager() {
     setAlertConfig({ visible: true, title, message, type: "alert" });
   };
   
+  const sanitizeDecimalInput = (text: string): string => {
+    const cleaned = text.replace(/[^0-9.]/g, "");
+    const parts = cleaned.split(".");
+    if (parts.length > 2) {
+      return `${parts[0]}.${parts.slice(1).join("")}`;
+    }
+    return cleaned;
+  };
+  
   const openEntryModal = (
     componentId: number | string,
     entry: GradeEntry | null = null
@@ -103,7 +119,7 @@ export default function CourseGradeManager() {
     setEntryName(entry ? entry.name : "");
     setEntryScore(entry ? entry.score.toString() : "");
     setEntryMaxScore(entry ? entry.max_score.toString() : "");
-    setEntryError(null);
+    setEntryErrors({});
     setAddGradeModal(true);
   };
 
@@ -114,29 +130,40 @@ export default function CourseGradeManager() {
     setEntryName("");
     setEntryScore("");
     setEntryMaxScore("");
-    setEntryError(null);
+    setEntryErrors({});
   };
 
   const handleSaveGradeEntry = async () => {
-    if (!entryName.trim() || !entryScore.trim() || !entryMaxScore.trim()) {
-      setEntryError("Please fill out all fields.");
+    const errors: { name?: string; score?: string; maxScore?: string } = {};
+    const decimalRegex = /^\d+(\.\d+)?$/;
+
+    if (!entryName.trim()) {
+      errors.name = "Assessment name is required.";
+    }
+
+    if (!entryScore.trim()) {
+      errors.score = "Score is required.";
+    } else if (!decimalRegex.test(entryScore.trim())) {
+      errors.score = "Must be a valid number.";
+    }
+
+    if (!entryMaxScore.trim()) {
+      errors.maxScore = "Max score is required.";
+    } else if (!decimalRegex.test(entryMaxScore.trim())) {
+      errors.maxScore = "Must be a valid number.";
+    } else if (parseFloat(entryMaxScore) <= 0) {
+      errors.maxScore = "Must be greater than 0.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setEntryErrors(errors);
       return;
     }
 
     const parsedScore = parseFloat(entryScore);
     const parsedMaxScore = parseFloat(entryMaxScore);
 
-    if (isNaN(parsedScore) || isNaN(parsedMaxScore)) {
-      setEntryError("Score and Max Score must be valid numbers.");
-      return;
-    }
-
-    if (parsedMaxScore <= 0) {
-      setEntryError("Max score must be greater than zero.");
-      return;
-    }
-
-    setEntryError(null);
+    setEntryErrors({});
     setIsSavingEntry(true);
 
     const isEditing = !!selectedEntry;
@@ -166,7 +193,7 @@ export default function CourseGradeManager() {
     setIsSavingEntry(false);
 
     if (error) {
-      setEntryError(error);
+      setEntryErrors({ name: error });
     } else {
       closeEntryModal();
       loadCourse();
@@ -196,7 +223,7 @@ export default function CourseGradeManager() {
     setSelectedComponent(category);
     setComponentName(category ? category.name : "");
     setComponentWeight(category ? category.weight.toString() : "");
-    setComponentError(null);
+    setComponentErrors({});
     setComponentModal(true);
   };
 
@@ -205,16 +232,31 @@ export default function CourseGradeManager() {
     setSelectedComponent(null);
     setComponentName("");
     setComponentWeight("");
-    setComponentError(null);
+    setComponentErrors({});
   };
 
   const handleSaveComponent = async () => {
-    if (!componentName.trim() || !componentWeight.trim()) {
-      setComponentError("Please enter both a name and weight.");
+    const errors: { name?: string; weight?: string } = {};
+    const decimalRegex = /^\d+(\.\d+)?$/;
+
+    if (!componentName.trim()) {
+      errors.name = "Component name is required.";
+    }
+
+    if (!componentWeight.trim()) {
+      errors.weight = "Weight is required.";
+    } else if (!decimalRegex.test(componentWeight.trim())) {
+      errors.weight = "Must be a valid number.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setComponentErrors(errors);
       return;
     }
 
-    setComponentError(null);
+    const parsedWeight = parseFloat(componentWeight);
+
+    setComponentErrors({});
     setIsSavingComponent(true);
 
     const isEditing = !!selectedComponent;
@@ -224,8 +266,8 @@ export default function CourseGradeManager() {
     const method = isEditing ? "PATCH" : "POST";
 
     const payload = isEditing
-      ? { name: componentName.trim(), weight: parseFloat(componentWeight) }
-      : { course: courseId, name: componentName.trim(), weight: parseFloat(componentWeight) };
+      ? { name: componentName.trim(), weight: parsedWeight }
+      : { course: courseId, name: componentName.trim(), weight: parsedWeight };
 
     const { error } = await apiRequest(url, {
       method,
@@ -235,7 +277,7 @@ export default function CourseGradeManager() {
     setIsSavingComponent(false);
 
     if (error) {
-      setComponentError(error);
+      setComponentErrors({ name: error });
     } else {
       closeComponentModal();
       loadCourse();
@@ -499,39 +541,64 @@ export default function CourseGradeManager() {
         >
           <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
             <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair">
-              <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-3">
+              <Text className="text-brand-navy text-sm font-black uppercase tracking-widest mb-3">
                 {selectedComponent ? "Edit Component" : "Add Grade Component"}
               </Text>
+              
+              <View className="mb-3">
+                <Text className="text-brand-navy text-xs font-black mb-1">
+                  Component Name
+                </Text>
+                <TextInput
+                  className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+                    componentErrors.name ? "border-red-500 bg-red-50/20" : "border-brand-hair"
+                  }`}
+                  placeholder="Component Name (e.g., Exams, Quizzes)"
+                  placeholderTextColor="#A8ADB8"
+                  value={componentName}
+                  onChangeText={(text) => {
+                    setComponentName(text);
+                    if (componentErrors.name) {
+                      setComponentErrors((prev) => ({ ...prev, name: undefined }));
+                    }
+                  }}
+                  autoFocus
+                />
+                {componentErrors.name && (
+                  <Text className="text-red-500 text-[10px] font-medium mt-1 ml-1">
+                    {componentErrors.name}
+                  </Text>
+                )}
+              </View>
+              
+              <View className="mb-3">
+                <Text className="text-brand-navy text-xs font-black mb-1">
+                  Weight (%)
+                </Text>
+                <TextInput
+                  className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+                    componentErrors.weight ? "border-red-500 bg-red-50/20" : "border-brand-hair"
+                  }`}
+                  placeholder="Weight (%)"
+                  placeholderTextColor="#A8ADB8"
+                  keyboardType="numeric"
+                  value={componentWeight}
+                  onChangeText={(text) => {
+                    const sanitized = sanitizeDecimalInput(text);
+                    setComponentWeight(sanitized);
+                    if (componentErrors.weight) {
+                      setComponentErrors((prev) => ({ ...prev, weight: undefined }));
+                    }
+                  }}
+                />
+                {componentErrors.weight && (
+                  <Text className="text-red-500 text-[10px] font-medium mt-1 ml-1">
+                    {componentErrors.weight}
+                  </Text>
+                )}
+              </View>
 
-              <TextInput
-                className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium mb-2"
-                placeholder="Component Name (e.g., Exams, Quizzes)"
-                placeholderTextColor="#A8ADB8"
-                value={componentName}
-                onChangeText={(text) => {
-                  setComponentName(text);
-                  if (componentError) setComponentError(null);
-                }}
-                autoFocus
-              />
-
-              <TextInput
-                className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium mb-2"
-                placeholder="Weight (%)"
-                placeholderTextColor="#A8ADB8"
-                keyboardType="numeric"
-                value={componentWeight}
-                onChangeText={(text) => {
-                  setComponentWeight(text);
-                  if (componentError) setComponentError(null);
-                }}
-              />
-
-              {componentError && (
-                <Text className="text-brand-crimson text-xs mb-2">{componentError}</Text>
-              )}
-
-              <View className="flex-row justify-end gap-2 mt-3">
+              <View className="flex-row justify-end gap-2 mt-4">
                 <Pressable
                   className="px-4 py-2 rounded-full border border-brand-hair bg-white"
                   onPress={closeComponentModal}
@@ -565,55 +632,93 @@ export default function CourseGradeManager() {
         >
           <View className="flex-1 justify-center items-center bg-brand-navy/60 px-6">
             <View className="w-full max-w-[360px] bg-white rounded-2xl p-5 border border-brand-hair overflow-hidden">
-              <Text className="text-brand-navy text-xs font-black uppercase tracking-widest mb-3">
+              <Text className="text-brand-navy text-sm font-black uppercase tracking-widest mb-3">
                 {selectedEntry ? "Edit Assessment Grade" : "Add Assessment Grade"}
               </Text>
-
-              <View className="gap-2.5 mb-2 w-full">
+              
+              <View className="mb-3">
+                <Text className="text-brand-navy text-xs font-black mb-1">
+                  Assessment Name
+                </Text>
                 <TextInput
-                  className="bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium w-full"
+                  className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+                    entryErrors.name ? "border-red-500 bg-red-50/20" : "border-brand-hair"
+                  }`}
                   placeholder="Assessment Name (e.g., Quiz 1)"
                   placeholderTextColor="#A8ADB8"
                   value={entryName}
                   onChangeText={(text) => {
                     setEntryName(text);
-                    if (entryError) setEntryError(null);
+                    if (entryErrors.name) {
+                      setEntryErrors((prev) => ({ ...prev, name: undefined }));
+                    }
                   }}
                   autoFocus
                 />
-
-                <View className="flex-row gap-2 w-full">
+                {entryErrors.name && (
+                  <Text className="text-red-500 text-[10px] font-medium mt-1 ml-1">
+                    {entryErrors.name}
+                  </Text>
+                )}
+              </View>
+              
+              <View className="flex-row gap-2 mb-3">
+                <View className="flex-1">
+                  <Text className="text-brand-navy text-xs font-black mb-1">
+                    Score
+                  </Text>
                   <TextInput
-                    className="flex-1 min-w-0 bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium"
+                    className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+                      entryErrors.score ? "border-red-500 bg-red-50/20" : "border-brand-hair"
+                    }`}
                     placeholder="Score"
                     placeholderTextColor="#A8ADB8"
                     keyboardType="numeric"
                     value={entryScore}
                     onChangeText={(text) => {
-                      setEntryScore(text);
-                      if (entryError) setEntryError(null);
+                      const sanitized = sanitizeDecimalInput(text);
+                      setEntryScore(sanitized);
+                      if (entryErrors.score) {
+                        setEntryErrors((prev) => ({ ...prev, score: undefined }));
+                      }
                     }}
                   />
+                  {entryErrors.score && (
+                    <Text className="text-red-500 text-[10px] font-medium mt-1 ml-1">
+                      {entryErrors.score}
+                    </Text>
+                  )}
+                </View>
 
+                <View className="flex-1">
+                  <Text className="text-brand-navy text-xs font-black mb-1">
+                    Max Score
+                  </Text>
                   <TextInput
-                    className="flex-1 min-w-0 bg-brand-card border border-brand-hair rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium"
+                    className={`bg-brand-card border rounded-xl px-3.5 py-2.5 text-brand-navy text-xs font-medium ${
+                      entryErrors.maxScore ? "border-red-500 bg-red-50/20" : "border-brand-hair"
+                    }`}
                     placeholder="Max Score"
                     placeholderTextColor="#A8ADB8"
                     keyboardType="numeric"
                     value={entryMaxScore}
                     onChangeText={(text) => {
-                      setEntryMaxScore(text);
-                      if (entryError) setEntryError(null);
+                      const sanitized = sanitizeDecimalInput(text);
+                      setEntryMaxScore(sanitized);
+                      if (entryErrors.maxScore) {
+                        setEntryErrors((prev) => ({ ...prev, maxScore: undefined }));
+                      }
                     }}
                   />
+                  {entryErrors.maxScore && (
+                    <Text className="text-red-500 text-[10px] font-medium mt-1 ml-1">
+                      {entryErrors.maxScore}
+                    </Text>
+                  )}
                 </View>
               </View>
 
-              {entryError && (
-                <Text className="text-brand-crimson text-xs mb-2 mt-1">{entryError}</Text>
-              )}
-
-              <View className="flex-row justify-end gap-2 mt-3">
+              <View className="flex-row justify-end gap-2 mt-4">
                 <Pressable
                   className="px-4 py-2 rounded-full border border-brand-hair bg-white"
                   onPress={closeEntryModal}
