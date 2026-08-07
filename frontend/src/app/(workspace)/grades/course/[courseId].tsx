@@ -247,6 +247,15 @@ export default function CourseGradeManager() {
       errors.weight = "Weight is required.";
     } else if (!decimalRegex.test(componentWeight.trim())) {
       errors.weight = "Must be a valid number.";
+    } else {
+      const otherComponentsTotal = (course?.grade_components ?? [])
+        .filter((c) => !selectedComponent || c.id !== selectedComponent.id)
+        .reduce((sum, c) => sum + parseFloat(c.weight), 0);
+      const newTotal = otherComponentsTotal + parseFloat(componentWeight.trim());
+
+      if (newTotal > 100) {
+        errors.weight = `Total weight would be ${newTotal.toFixed(1)}%. Must not exceed 100%.`;
+      }
     }
 
     if (Object.keys(errors).length > 0) {
