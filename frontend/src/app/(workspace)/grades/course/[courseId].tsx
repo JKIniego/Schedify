@@ -442,43 +442,52 @@ export default function CourseGradeManager() {
                       key={category.id}
                       className="rounded-2xl bg-brand-card border border-brand-hair p-4"
                     >
-                      <View className="flex-row items-center justify-between border-b border-brand-hair pb-2.5 mb-3">
-                        <View className="flex-row items-center gap-2">
-                          <Feather name="folder" size={14} color="#14213D" />
-                          <Text className="text-brand-navy font-bold text-sm">
-                            {category.name}
-                          </Text>
-                          <Pressable
-                            hitSlop={6}
-                            className="p-1 active:opacity-60"
-                            onPress={() => openComponentModal(category)}
-                          >
-                            <Feather name="edit-2" size={12} color="#5B6472" />
-                          </Pressable>
-                          <Pressable
-                            hitSlop={6}
-                            className="p-1 active:opacity-60"
-                            onPress={() => handleDeleteGradeComponent(category.id, category.name)}
-                          >
-                            <Feather name="trash-2" size={12} color="#8B1E3F" />
-                          </Pressable>
+                      <View className="border-b border-brand-hair pb-3 mb-3">
+                        <View className="flex-row items-center justify-between mb-2.5">
+                          <View className="flex-row items-center gap-2 flex-1 pr-2">
+                            <Feather name="folder" size={14} color="#14213D" />
+                            <Text
+                              className="text-brand-navy font-bold text-sm flex-shrink"
+                              numberOfLines={1}
+                            >
+                              {category.name}
+                            </Text>
+                          </View>
+
+                          <View className="bg-brand-navy/5 px-2.5 py-1 rounded-full border border-brand-navy/10">
+                            <Text className="text-brand-navy text-[10px] font-black">
+                              {parseFloat(category.weight)}% weight
+                            </Text>
+                          </View>
                         </View>
 
-                        <View className="flex-row items-center gap-2">
+                        <View className="flex-row items-center justify-between">
                           <Pressable
-                            className="bg-brand-navy/10 px-2 py-1 rounded-full flex-row items-center gap-1 active:opacity-70"
+                            hitSlop={6}
+                            className="flex-row items-center gap-1 active:opacity-60"
                             onPress={() => openEntryModal(category.id, null)}
                           >
-                            <Feather name="plus" size={10} color="#14213D" />
-                            <Text className="text-brand-navy text-[10px] font-bold uppercase">
+                            <Feather name="plus" size={12} color="#5B6472" />
+                            <Text className="text-brand-slate text-[10px] font-bold uppercase tracking-wider">
                               Add Item
                             </Text>
                           </Pressable>
 
-                          <View className="bg-brand-navy/5 px-2.5 py-1 rounded-full border border-brand-navy/10">
-                            <Text className="text-brand-navy text-[10px] font-black">
-                              Weight: {parseFloat(category.weight)}%
-                            </Text>
+                          <View className="flex-row items-center gap-4">
+                            <Pressable
+                              hitSlop={8}
+                              className="active:opacity-60"
+                              onPress={() => openComponentModal(category)}
+                            >
+                              <Feather name="edit-2" size={12} color="#5B6472" />
+                            </Pressable>
+                            <Pressable
+                              hitSlop={8}
+                              className="active:opacity-60"
+                              onPress={() => handleDeleteGradeComponent(category.id, category.name)}
+                            >
+                              <Feather name="trash-2" size={12} color="#8B1E3F" />
+                            </Pressable>
                           </View>
                         </View>
                       </View>
@@ -499,28 +508,32 @@ export default function CourseGradeManager() {
                             </View>
 
                             <View className="flex-row items-center gap-3">
-                              <Text className="text-brand-navy text-xs font-black">
-                                {item.max_score > 0
-                                  ? ((item.score / item.max_score) * 100).toFixed(0)
-                                  : "0"}
-                                %
-                              </Text>
+                              <View className="bg-brand-navy/5 px-2 py-0.5 rounded-full min-w-[38px] items-center">
+                                <Text className="text-brand-navy text-[11px] font-black">
+                                  {item.max_score > 0
+                                    ? ((item.score / item.max_score) * 100).toFixed(0)
+                                    : "0"}
+                                  %
+                                </Text>
+                              </View>
 
-                              <Pressable
-                                hitSlop={6}
-                                className="p-1 active:opacity-60"
-                                onPress={() => openEntryModal(category.id, item)}
-                              >
-                                <Feather name="edit-2" size={12} color="#5B6472" />
-                              </Pressable>
+                              <View className="flex-row items-center gap-2">
+                                <Pressable
+                                  hitSlop={8}
+                                  className="active:opacity-60"
+                                  onPress={() => openEntryModal(category.id, item)}
+                                >
+                                  <Feather name="edit-2" size={12} color="#5B6472" />
+                                </Pressable>
 
-                              <Pressable
-                                hitSlop={6}
-                                className="p-1 active:opacity-60"
-                                onPress={() => handleDeleteGradeEntry(item.id, item.name)}
-                              >
-                                <Feather name="trash-2" size={12} color="#8B1E3F" />
-                              </Pressable>
+                                <Pressable
+                                  hitSlop={8}
+                                  className="active:opacity-60"
+                                  onPress={() => handleDeleteGradeEntry(item.id, item.name)}
+                                >
+                                  <Feather name="trash-2" size={12} color="#8B1E3F" />
+                                </Pressable>
+                              </View>
                             </View>
                           </View>
                         ))}
