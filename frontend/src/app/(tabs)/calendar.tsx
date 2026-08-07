@@ -227,13 +227,6 @@ export default function CalendarScreen() {
                     className="bg-white border border-brand-hair rounded-xl p-3.5 flex-row items-center justify-between shadow-xs"
                   >
                     <View className="flex-1 pr-3 items-start gap-1">
-                      <Text
-                        className={`text-brand-navy font-bold text-xs ${
-                          task.is_completed ? "line-through text-brand-slate" : ""
-                        }`}
-                      >
-                        {task.title}
-                      </Text>
                       {task.course_name && (
                         <View className="bg-brand-navy px-2 py-0.5 rounded-full">
                           <Text className="text-white text-[10px] font-medium tracking-widest mt-0.5">
@@ -241,6 +234,13 @@ export default function CalendarScreen() {
                           </Text>
                         </View>
                       )}
+                      <Text
+                        className={`text-brand-navy font-bold text-xs ${
+                          task.is_completed ? "line-through text-brand-slate" : ""
+                        }`}
+                      >
+                        {task.title}
+                      </Text>
                     </View>
 
                     <View className="flex-row items-center gap-2">
